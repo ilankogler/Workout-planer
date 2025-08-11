@@ -1,0 +1,256 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Half Marathon Tracker</title>
+<style>
+  :root {
+    --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
+    --bg:#0f1115; --card:#171923; --text:#e9edf1; --muted:#a0aec0; --accent:#52c7ea;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text);}
+  header { position:sticky; top:0; backdrop-filter: blur(8px); background:rgba(15,17,21,.8); padding:12px 16px; border-bottom:1px solid #2d3748; z-index:10; }
+  h1 { margin:0; font-size:18px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  select, button, input[type="file"]{ background:#1f2330; color:var(--text); border:1px solid #2d3748; border-radius:10px; padding:10px 12px; font-size:14px; }
+  button.primary{ background:var(--accent); color:#00202a; border:none; }
+  .progress { margin:12px 16px; background:#1f2330; border-radius:12px; padding:12px; }
+  .bar-wrap { height:10px; background:#2d3748; border-radius:8px; overflow:hidden; }
+  .bar { height:100%; width:0%; background:linear-gradient(90deg, #52c7ea, #8be9fd); transition: width .3s ease; }
+  .statline { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-top:8px; }
+  .list { display:grid; gap:10px; padding:10px 16px 100px; }
+  .card { background:var(--card); border:1px solid #2d3748; padding:12px; border-radius:12px; display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; }
+  .meta { font-size:12px; color:var(--muted); }
+  .workout { font-weight:600; }
+  .pill { font-size:11px; padding:4px 8px; border-radius:999px; color:#0b0e10; width:max-content; }
+  .type-e { background:var(--easy); }
+  .type-s { background:var(--speed); }
+  .type-l { background:var(--long); }
+  .type-race { background:var(--race); }
+  .type-rest { background:var(--rest); }
+  .type-runwalk { background:var(--runwalk); color:#191919; }
+  .type-walk { background:var(--walk); color:#191919; }
+  input[type=checkbox]{ width:22px; height:22px; accent-color: #52c7ea; }
+  details { grid-column:1 / -1; }
+  textarea, input.note { width:100%; background:#0f1115; color:var(--text); border:1px solid #2d3748; border-radius:8px; padding:8px; font-size:14px; }
+  footer { position:fixed; bottom:0; left:0; right:0; background:rgba(15,17,21,.95); border-top:1px solid #2d3748; padding:10px 16px; display:flex; gap:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Half Marathon Tracker</h1>
+  <div class="controls">
+    <select id="weekFilter"></select>
+    <button id="showAll">Show all</button>
+    <button id="markWeek" class="primary">Mark week done</button>
+  </div>
+</header>
+
+<section class="progress">
+  <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+  <div class="statline">
+    <div><span id="doneCount">0</span>/<span id="totalCount">0</span> completed</div>
+    <div id="percent">0%</div>
+  </div>
+</section>
+
+<main class="list" id="list"></main>
+
+<footer>
+  <button id="export" class="primary">Export progress</button>
+  <input id="importFile" type="file" accept="application/json"/>
+  <button id="importBtn">Import</button>
+  <button id="installBtn">Add to Home</button>
+</footer>
+
+<script>
+const PLAN = {data: [{"week": -3, "date": "2025-08-11", "day": "Mon", "workout": "E: 2.5-3 km"}, {"week": -3, "date": "2025-08-13", "day": "Wed", "workout": "Run/Walk 4×(2 min run / 1 min walk)"}, {"week": -3, "date": "2025-08-16", "day": "Sat", "workout": "L: 3.5 km"}, {"week": -3, "date": "2025-08-17", "day": "Sun", "workout": "Walk 30-40 min"}, {"week": -2, "date": "2025-08-18", "day": "Mon", "workout": "E: 3 km"}, {"week": -2, "date": "2025-08-20", "day": "Wed", "workout": "Run/Walk 5×(2 min run / 1 min walk)"}, {"week": -2, "date": "2025-08-23", "day": "Sat", "workout": "L: 4 km"}, {"week": -2, "date": "2025-08-24", "day": "Sun", "workout": "Walk 30-40 min"}, {"week": -1, "date": "2025-08-25", "day": "Mon", "workout": "E: 3 km"}, {"week": -1, "date": "2025-08-27", "day": "Wed", "workout": "Run/Walk 5×(3 min run / 1 min walk)"}, {"week": -1, "date": "2025-08-30", "day": "Sat", "workout": "L: 4.5 km"}, {"week": -1, "date": "2025-08-31", "day": "Sun", "workout": "Walk 30-40 min"}, {"week": 0, "date": "2025-09-01", "day": "Mon", "workout": "E: 3.5 km"}, {"week": 0, "date": "2025-09-03", "day": "Wed", "workout": "Run/Walk 6×(3 min run / 1 min walk)"}, {"week": 0, "date": "2025-09-06", "day": "Sat", "workout": "L: 5 km"}, {"week": 0, "date": "2025-09-07", "day": "Sun", "workout": "Walk 30-40 min"}, {"week": 1, "date": "2025-09-08", "day": "Mon", "workout": "E: 3 km"}, {"week": 1, "date": "2025-09-10", "day": "Wed", "workout": "S: 4×400m fast / 400m jog"}, {"week": 1, "date": "2025-09-13", "day": "Sat", "workout": "L: 4 km"}, {"week": 1, "date": "2025-09-14", "day": "Sun", "workout": "E: 3 km"}, {"week": 2, "date": "2025-09-15", "day": "Mon", "workout": "E: 3.5 km"}, {"week": 2, "date": "2025-09-17", "day": "Wed", "workout": "S: 5×400m"}, {"week": 2, "date": "2025-09-20", "day": "Sat", "workout": "L: 5 km"}, {"week": 2, "date": "2025-09-21", "day": "Sun", "workout": "E: 3 km"}, {"week": 3, "date": "2025-09-22", "day": "Mon", "workout": "E: 4 km"}, {"week": 3, "date": "2025-09-24", "day": "Wed", "workout": "S: 4×600m"}, {"week": 3, "date": "2025-09-27", "day": "Sat", "workout": "L: 6 km"}, {"week": 3, "date": "2025-09-28", "day": "Sun", "workout": "E: 3.5 km"}, {"week": 4, "date": "2025-09-29", "day": "Mon", "workout": "E: 4 km"}, {"week": 4, "date": "2025-10-01", "day": "Wed", "workout": "S: 6×400m"}, {"week": 4, "date": "2025-10-04", "day": "Sat", "workout": "L: 7 km"}, {"week": 4, "date": "2025-10-05", "day": "Sun", "workout": "E: 3.5 km"}, {"week": 5, "date": "2025-10-06", "day": "Mon", "workout": "E: 4.5 km"}, {"week": 5, "date": "2025-10-08", "day": "Wed", "workout": "S: 5×600m"}, {"week": 5, "date": "2025-10-11", "day": "Sat", "workout": "L: 8 km"}, {"week": 5, "date": "2025-10-12", "day": "Sun", "workout": "E: 4 km"}, {"week": 6, "date": "2025-10-13", "day": "Mon", "workout": "E: 5 km"}, {"week": 6, "date": "2025-10-15", "day": "Wed", "workout": "S: 6×500m"}, {"week": 6, "date": "2025-10-18", "day": "Sat", "workout": "L: 9 km"}, {"week": 6, "date": "2025-10-19", "day": "Sun", "workout": "E: 4 km"}, {"week": 7, "date": "2025-10-20", "day": "Mon", "workout": "E: 5 km"}, {"week": 7, "date": "2025-10-22", "day": "Wed", "workout": "S: 4×800m"}, {"week": 7, "date": "2025-10-25", "day": "Sat", "workout": "L: 10 km"}, {"week": 7, "date": "2025-10-26", "day": "Sun", "workout": "E: 4.5 km"}, {"week": 8, "date": "2025-10-27", "day": "Mon", "workout": "E: 5.5 km"}, {"week": 8, "date": "2025-10-29", "day": "Wed", "workout": "S: 5×800m"}, {"week": 8, "date": "2025-11-01", "day": "Sat", "workout": "L: 11 km"}, {"week": 8, "date": "2025-11-02", "day": "Sun", "workout": "E: 4.5 km"}, {"week": 9, "date": "2025-11-03", "day": "Mon", "workout": "E: 6 km"}, {"week": 9, "date": "2025-11-05", "day": "Wed", "workout": "S: 6×800m"}, {"week": 9, "date": "2025-11-08", "day": "Sat", "workout": "L: 12 km"}, {"week": 9, "date": "2025-11-09", "day": "Sun", "workout": "E: 5 km"}, {"week": 10, "date": "2025-11-10", "day": "Mon", "workout": "E: 6.5 km"}, {"week": 10, "date": "2025-11-12", "day": "Wed", "workout": "S: 5×1 km"}, {"week": 10, "date": "2025-11-15", "day": "Sat", "workout": "L: 13 km"}, {"week": 10, "date": "2025-11-16", "day": "Sun", "workout": "E: 5 km"}, {"week": 11, "date": "2025-11-17", "day": "Mon", "workout": "E: 7 km"}, {"week": 11, "date": "2025-11-19", "day": "Wed", "workout": "S: 6×1 km"}, {"week": 11, "date": "2025-11-22", "day": "Sat", "workout": "L: 14 km"}, {"week": 11, "date": "2025-11-23", "day": "Sun", "workout": "E: 5.5 km"}, {"week": 12, "date": "2025-11-24", "day": "Mon", "workout": "E: 7 km"}, {"week": 12, "date": "2025-11-26", "day": "Wed", "workout": "S: 8×600m"}, {"week": 12, "date": "2025-11-29", "day": "Sat", "workout": "L: 15 km"}, {"week": 12, "date": "2025-11-30", "day": "Sun", "workout": "E: 5.5 km"}, {"week": 13, "date": "2025-12-01", "day": "Mon", "workout": "E: 7.5 km"}, {"week": 13, "date": "2025-12-03", "day": "Wed", "workout": "S: 6×1 km"}, {"week": 13, "date": "2025-12-06", "day": "Sat", "workout": "L: 16 km"}, {"week": 13, "date": "2025-12-07", "day": "Sun", "workout": "E: 6 km"}, {"week": 14, "date": "2025-12-08", "day": "Mon", "workout": "E: 8 km"}, {"week": 14, "date": "2025-12-10", "day": "Wed", "workout": "S: 8×800m"}, {"week": 14, "date": "2025-12-13", "day": "Sat", "workout": "L: 18 km"}, {"week": 14, "date": "2025-12-14", "day": "Sun", "workout": "E: 6 km"}, {"week": 15, "date": "2025-12-15", "day": "Mon", "workout": "E: 6 km"}, {"week": 15, "date": "2025-12-17", "day": "Wed", "workout": "S: 5×1 km"}, {"week": 15, "date": "2025-12-20", "day": "Sat", "workout": "L: 12 km"}, {"week": 15, "date": "2025-12-21", "day": "Sun", "workout": "E: 5 km"}, {"week": 16, "date": "2025-12-22", "day": "Mon", "workout": "E: 4 km"}, {"week": 16, "date": "2025-12-24", "day": "Wed", "workout": "S: 4×400m"}, {"week": 16, "date": "2025-12-27", "day": "Sat", "workout": "Rest"}, {"week": 16, "date": "2025-12-28", "day": "Sun", "workout": "Race: 21.1 km"}]};
+const KEY = "hm_tracker_v1";
+let deferredPrompt = null;
+
+function typeFromText(t) {
+  if (t.startsWith("E:")) return "e";
+  if (t.startsWith("S:")) return "s";
+  if (t.startsWith("L:")) return "l";
+  if (t.includes("Race")) return "race";
+  if (t.includes("Rest")) return "rest";
+  if (t.includes("Run/Walk")) return "runwalk";
+  if (t.includes("Walk")) return "walk";
+  return "e";
+}
+
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function saveState(state){
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+
+function render(){
+  const state = loadState();
+  const list = document.getElementById('list');
+  list.innerHTML = "";
+  let total = 0, done = 0;
+
+  // Build week filter
+  const weeks = [...new Set(PLAN.data.map(it => it.week))];
+  const weekFilter = document.getElementById('weekFilter');
+  weekFilter.innerHTML = weeks.map(w => `<option value="${w}">Week ${w}</option>`).join("");
+  weekFilter.value = state.filterWeek ?? weeks[0];
+
+  PLAN.data.forEach((it, idx) => {
+    total++;
+    const id = "w" + idx;
+    const checked = !!state[id];
+    if (checked) done++;
+
+    const type = typeFromText(it.workout);
+    const hidden = (state.filterWeek != null && it.week != state.filterWeek);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    if (hidden) card.style.display = 'none';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = checked;
+    cb.addEventListener('change', () => {
+      const s = loadState();
+      s[id] = cb.checked;
+      saveState(s);
+      updateProgress();
+    });
+
+    const content = document.createElement('div');
+    const wline = document.createElement('div');
+    wline.className = 'workout';
+    wline.textContent = it.workout;
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `Week ${it.week} • ${it.day} • ${it.date}`;
+
+    const pill = document.createElement('span');
+    pill.className = 'pill type-' + type;
+    pill.textContent = type.toUpperCase();
+
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = 'Add notes';
+    const fields = document.createElement('div');
+    fields.innerHTML = `
+      <div style="display:grid; gap:8px; margin-top:8px;">
+        <input class="note" id="time_${id}" placeholder="Time (min)" inputmode="decimal">
+        <input class="note" id="dist_${id}" placeholder="Distance (km)" inputmode="decimal">
+        <input class="note" id="hr_${id}" placeholder="Avg HR">
+        <textarea class="note" id="notes_${id}" rows="2" placeholder="Notes"></textarea>
+      </div>
+    `;
+
+    // Restore notes
+    if (state['time_'+id]) fields.querySelector('#time_'+id).value = state['time_'+id];
+    if (state['dist_'+id]) fields.querySelector('#dist_'+id).value = state['dist_'+id];
+    if (state['hr_'+id]) fields.querySelector('#hr_'+id).value = state['hr_'+id];
+    if (state['notes_'+id]) fields.querySelector('#notes_'+id).value = state['notes_'+id];
+
+    fields.addEventListener('input', (e)=>{
+      const s = loadState();
+      s['time_'+id] = fields.querySelector('#time_'+id).value;
+      s['dist_'+id] = fields.querySelector('#dist_'+id).value;
+      s['hr_'+id] = fields.querySelector('#hr_'+id).value;
+      s['notes_'+id] = fields.querySelector('#notes_'+id).value;
+      saveState(s);
+    });
+
+    details.appendChild(summary);
+    details.appendChild(fields);
+
+    content.appendChild(wline);
+    content.appendChild(meta);
+    content.appendChild(pill);
+    content.appendChild(details);
+
+    card.appendChild(cb);
+    card.appendChild(content);
+    list.appendChild(card);
+  });
+
+  document.getElementById('totalCount').textContent = total;
+  updateProgress();
+  hookControls();
+}
+
+function updateProgress(){
+  const state = loadState();
+  const total = PLAN.data.length;
+  let done = 0;
+  PLAN.data.forEach((_, idx)=>{ if (state['w'+idx]) done++; });
+  const pct = total ? Math.round(done*100/total) : 0;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('percent').textContent = pct + "%";
+  document.getElementById('bar').style.width = pct + "%";
+}
+
+function hookControls(){
+  const weekFilter = document.getElementById('weekFilter');
+  weekFilter.addEventListener('change', (e)=>{
+    const s = loadState();
+    s.filterWeek = parseInt(e.target.value);
+    saveState(s);
+    render();
+  });
+
+  document.getElementById('showAll').addEventListener('click', ()=>{
+    const s = loadState();
+    s.filterWeek = null;
+    saveState(s);
+    render();
+  });
+
+  document.getElementById('markWeek').addEventListener('click', ()=>{
+    const s = loadState();
+    const w = s.filterWeek;
+    PLAN.data.forEach((it, idx)=>{ if (it.week === w) s['w'+idx] = true; });
+    saveState(s);
+    render();
+  });
+
+  document.getElementById('export').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(loadState())], {type:"application/json"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'hm_progress_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  document.getElementById('importBtn').addEventListener('click', ()=>{
+    const f = document.getElementById('importFile').files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { localStorage.setItem(KEY, reader.result); render(); };
+    reader.readAsText(f);
+  });
+
+  // PWA-ish "Add to Home Screen"
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').disabled = false;
+  });
+  document.getElementById('installBtn').addEventListener('click', async ()=>{
+    if (!deferredPrompt) { alert('Use your browser menu: Share → Add to Home Screen'); return; }
+    deferredPrompt.prompt();
+    deferredPrompt = null;
+  });
+}
+
+render();
+</script>
+</body>
+</html>

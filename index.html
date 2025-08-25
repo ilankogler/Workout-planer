@@ -185,6 +185,7 @@
 
 <!-- ========== Firebase + App Code (Diagnostic build) ========== -->
 <script type="module">
+  /********** 1) PASTE YOUR FIREBASE CONFIG **********/
   const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCsk8uKyjaRUVih6HGUsPpwSUX_VI4bZwk",
   authDomain: "workout-planer-cd10f.firebaseapp.com",
@@ -199,7 +200,7 @@
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getAuth, setPersistence, browserLocalPersistence,
-    GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+    GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithPopup,
     onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -236,6 +237,7 @@
   const debugToggle = document.getElementById('debugToggle');
   const debugBody = document.getElementById('debugBody');
   debugToggle.onclick = ()=>{ const hide = debugBody.style.display!=='none'; debugBody.style.display = hide?'none':''; debugToggle.textContent = hide?'Show':'Hide'; };
+  const bootInfo = { host: location.host, HAS_CONFIG, projectId: FIREBASE_CONFIG.projectId };
   function logDebug(obj){ debugText.textContent = JSON.stringify(obj, null, 2); }
 
   /********** Helpers **********/
@@ -244,10 +246,9 @@
   function setMsg(el, msg){ if(el) el.textContent = msg || ""; }
 
   /********** Global state **********/
-  let auth=null, db=null, currentUser=null, lastRedirect = null, listenerFired=false, uiSwitched=false;
+  let auth=null, db=null, currentUser=null, lastRedirect = null, lastPopup=null, listenerFired=false, uiSwitched=false;
 
   /********** Boot **********/
-  const bootInfo = { host: location.host, HAS_CONFIG, projectId: FIREBASE_CONFIG.projectId };
   try {
     if (!HAS_CONFIG) {
       banner.classList.remove('hidden');
@@ -259,14 +260,14 @@
       const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
       auth = getAuth(app);
       db = getFirestore(app);
-      await setPersistence(auth, browserLocalPersistence); // ensure redirect session survives
+      await setPersistence(auth, browserLocalPersistence);
 
       // 1) Auth listener FIRST
       onAuthStateChanged(auth, async (user)=>{
         listenerFired = true;
         currentUser = user ? { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous } : null;
 
-        logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+        logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
         if (user && !uiSwitched) {
           uiSwitched = true;
           userBadge.textContent = currentUser.displayName;
@@ -285,10 +286,10 @@
           showAppUI(false);
           setMsg(loginMsg, "Sign in with Google, or continue temporarily.");
         }
-        logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+        logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
       });
 
-      // 2) Then process the redirect result (surface any error visibly)
+      // 2) Process redirect result AFTER listener (surface any error visibly)
       const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
       try {
         const rr = await getRedirectResult(auth);
@@ -297,10 +298,30 @@
         lastRedirect = { ok:false, error: (e && (e.message || String(e))) };
         setMsg(loginMsg, `Auth error after redirect: ${e.message || e}`);
       }
-      logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+      logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
 
-      // 3) Buttons
-      if (!loginGoogle.__bound){ loginGoogle.__bound = true; loginGoogle.onclick = ()=>{ setMsg(loginMsg, "Redirecting to Google…"); signInWithRedirect(auth, google); }; }
+      // 3) Buttons (popup-first, redirect-fallback)
+      if (!loginGoogle.__bound){ 
+        loginGoogle.__bound = true; 
+        loginGoogle.onclick = async ()=>{
+          setMsg(loginMsg, "Opening Google popup…");
+          try {
+            const res = await signInWithPopup(auth, google);
+            lastPopup = { ok:true, user: !!res.user };
+            logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
+          } catch (e) {
+            lastPopup = { ok:false, code: e.code, msg: e.message };
+            logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
+            // fallback to redirect for environments that block popups
+            if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user' || e.code === 'auth/operation-not-supported-in-this-environment') {
+              setMsg(loginMsg, "Popup blocked — redirecting to Google…");
+              await signInWithRedirect(auth, google);
+            } else {
+              setMsg(loginMsg, `Popup sign-in failed: ${e.message || e}`);
+            }
+          }
+        }; 
+      }
       if (!continueAnon.__bound){ continueAnon.__bound = true; continueAnon.onclick = async ()=>{ try { await signInAnonymously(auth); } catch(e){ setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message||e)); } }; }
       if (!signoutBtn.__bound){ signoutBtn.__bound = true; signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); }; }
     }
@@ -399,8 +420,7 @@
     renderList(plan, progress || {});
   }
 
-  function renderList(plan, progress){
-    const PLAN = plan;
+  function renderList(PLAN, progress){
     list.innerHTML = "";
     const state = progress || {};
     const weeks = [...new Set(PLAN.items.map(i=>i.week))].sort((a,b)=>a-b);
@@ -469,7 +489,7 @@
     resetPlan.onclick = ()=> openOnboarding(true);
 
     exportBtn.onclick = ()=>{
-      const uid = auth?.currentUser?.uid || "local";
+      const uid = (auth.currentUser && auth.currentUser.uid) || "local";
       const blob = new Blob([JSON.stringify({profile:LS.get(uid,'profile'), progress:LS.get(uid,'progress')}, null, 2)], {type:"application/json"});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='hm_backup.json'; a.click();
     };
@@ -478,7 +498,7 @@
       const r = new FileReader(); r.onload = async ()=>{
         try{
           const o = JSON.parse(r.result);
-          const uid = auth?.currentUser?.uid || "local";
+          const uid = (auth.currentUser && auth.currentUser.uid) || "local";
           if(o.profile){ await saveProfile(o.profile); }
           if(o.progress){ await saveProgress(o.progress); }
           await buildPlanAndRender(o.profile||LS.get(uid,'profile'), o.progress||LS.get(uid,'progress'));

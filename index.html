@@ -1,60 +1,71 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Half Marathon Planner</title>
 <style>
-  :root {
+  :root{
     --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
-    --bg:#0f1115; --card:#171923; --text:#e9edf1; --muted:#a0aec0; --accent:#52c7ea; --danger:#ff6b6b; --ok:#52dea6;
+    --bg:#0f1115; --card:#171923; --text:#e9edf1; --muted:#a0aec0; --accent:#52c7ea; --danger:#ff6b6b;
   }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text);}
-  header { position:sticky; top:0; backdrop-filter: blur(8px); background:rgba(15,17,21,.85); padding:12px 16px; border-bottom:1px solid #2d3748; z-index:10; display:flex; align-items:center; gap:10px; justify-content:space-between;}
-  h1 { margin:0; font-size:18px; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  select, button, input[type="file"], input, textarea{ background:#1f2330; color:var(--text); border:1px solid #2d3748; border-radius:10px; padding:10px 12px; font-size:14px; }
-  button.primary{ background:var(--accent); color:#00202a; border:none; }
-  button.ghost{ background:transparent; border:1px solid #2d3748; }
-  .progress { margin:12px 16px; background:#1f2330; border-radius:12px; padding:12px; }
-  .bar-wrap { height:10px; background:#2d3748; border-radius:8px; overflow:hidden; }
-  .bar { height:100%; width:0%; background:linear-gradient(90deg, #52c7ea, #8be9fd); transition: width .3s ease; }
-  .statline { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-top:8px; }
-  .list { display:grid; gap:10px; padding:10px 16px 120px; }
-  .card { background:var(--card); border:1px solid #2d3748; padding:12px; border-radius:12px; display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; }
-  .meta { font-size:12px; color:var(--muted); }
-  .workout { font-weight:600; }
-  .pill { font-size:11px; padding:4px 8px; border-radius:999px; color:#0b0e10; width:max-content; }
-  .type-e { background:var(--easy); }
-  .type-s { background:var(--speed); }
-  .type-l { background:var(--long); }
-  .type-race { background:var(--race); }
-  .type-rest { background:var(--rest); }
-  .type-runwalk { background:var(--runwalk); color:#191919; }
-  .type-walk { background:var(--walk); color:#191919; }
-  input[type=checkbox]{ width:22px; height:22px; accent-color: #52c7ea; }
-  details { grid-column:1 / -1; }
-  textarea, input.note { width:100%; background:#0f1115; color:var(--text); border:1px solid #2d3748; border-radius:8px; padding:8px; font-size:14px; }
-  footer.fixed { position:fixed; bottom:0; left:0; right:0; background:rgba(15,17,21,.95); border-top:1px solid #2d3748; padding:10px 16px; display:flex; gap:8px; flex-wrap:wrap;}
-  .badge { font-size:12px; color:var(--muted); }
-  .next { background:#12202a; border:1px solid #244b57; border-radius:12px; padding:10px 12px; margin:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
-  .next strong{ color:#9be7ff; }
-  .hidden { display:none !important; }
-  /* Modal */
-  .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(4,8,12,.65); z-index:100;}
-  .sheet { width:min(680px, 94vw); max-height:90vh; overflow:auto; background:#0f1115; border:1px solid #2d3748; border-radius:16px; padding:16px; }
-  .grid { display:grid; gap:10px; }
-  .two { grid-template-columns: 1fr 1fr; }
-  label { font-size:13px; color:#cbd5e0; }
-  .row { display:grid; gap:6px; }
-  .danger { color:var(--danger); }
-  .ok { color:var(--ok); }
+  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  header{position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(15,17,21,.85);padding:12px 16px;border-bottom:1px solid #2d3748;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  h1{margin:0;font-size:18px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  select,button,input,textarea{background:#1f2330;color:var(--text);border:1px solid #2d3748;border-radius:10px;padding:10px 12px;font-size:14px}
+  button.primary{background:var(--accent);color:#00202a;border:none}
+  button.ghost{background:transparent;border:1px solid #2d3748}
+  .badge{font-size:12px;color:var(--muted)}
+  .banner{padding:10px 16px;background:#1f2330;border-bottom:1px solid #2d3748;color:var(--muted)}
+  .progress{margin:12px 16px;background:#1f2330;border-radius:12px;padding:12px}
+  .bar-wrap{height:10px;background:#2d3748;border-radius:8px;overflow:hidden}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,#52c7ea,#8be9fd);transition:width .3s ease}
+  .statline{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:8px}
+  .list{display:grid;gap:10px;padding:10px 16px 120px}
+  .card{background:var(--card);border:1px solid #2d3748;padding:12px;border-radius:12px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
+  .meta{font-size:12px;color:var(--muted)} .workout{font-weight:600}
+  .pill{font-size:11px;padding:4px 8px;border-radius:999px;color:#0b0e10;width:max-content}
+  .type-e{background:var(--easy)} .type-s{background:var(--speed)} .type-l{background:var(--long)}
+  .type-race{background:var(--race)} .type-rest{background:var(--rest)} .type-runwalk{background:var(--runwalk);color:#191919} .type-walk{background:var(--walk);color:#191919}
+  input[type=checkbox]{width:22px;height:22px;accent-color:#52c7ea}
+  details{grid-column:1 / -1}
+  textarea,input.note{width:100%;background:#0f1115;color:var(--text);border:1px solid #2d3748;border-radius:8px;padding:8px;font-size:14px}
+  footer.fixed{position:fixed;bottom:0;left:0;right:0;background:rgba(15,17,21,.95);border-top:1px solid #2d3748;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}
+  .next{background:#12202a;border:1px solid #244b57;border-radius:12px;padding:10px 12px;margin:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .next strong{color:#9be7ff}
+  .hidden{display:none !important}
+  /* Login screen */
+  .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .panel{width:min(480px,94vw);background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:20px;display:grid;gap:12px}
+  .row{display:grid;gap:6px}
+  .provider-btn{display:flex;align-items:center;gap:10px;justify-content:center}
+  .apple{background:#fff;color:#111} .apple span{color:#111} .google{background:#fff;color:#111}
+  .note{color:#a0aec0;font-size:12px}
+  /* Onboarding modal */
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,8,12,.65);z-index:100}
+  .sheet{width:min(680px,94vw);max-height:90vh;overflow:auto;background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:16px}
+  .grid{display:grid;gap:10px} .two{grid-template-columns:1fr 1fr}
+  label{font-size:13px;color:#cbd5e0}
 </style>
 </head>
 <body>
-<header>
+
+<!-- ---------- LOGIN GATE (first screen) ---------- -->
+<section id="loginGate" class="gate">
+  <div class="panel">
+    <h2 style="margin:0 0 6px 0;">Welcome 👋</h2>
+    <p class="note" style="margin-top:0">Sign in to create and sync your plan. Your data will be saved to your account.</p>
+    <button id="loginGoogle" class="provider-btn google">Continue with Google</button>
+    <button id="loginApple" class="provider-btn apple"> Sign in with Apple</button>
+    <div id="loginMsg" class="note"></div>
+    <hr style="border-color:#2d3748" />
+    <button id="continueGuest" class="ghost">Continue as Guest (local only)</button>
+  </div>
+</section>
+
+<!-- ---------- APP (hidden until signed in OR guest continues) ---------- -->
+<header id="appHeader" class="hidden">
   <div style="display:flex;align-items:center;gap:10px;">
     <h1>Half Marathon Planner</h1>
     <span class="badge" id="userBadge">Guest</span>
@@ -64,17 +75,18 @@
     <button id="showAll" class="ghost">Show all</button>
     <button id="markWeek" class="primary">Mark week done</button>
     <button id="resetPlan" class="ghost">Reset & Replan</button>
-    <button id="signin" class="primary">Sign in</button>
     <button id="signout" class="ghost hidden">Sign out</button>
   </div>
 </header>
 
-<section class="next hidden" id="nextBox">
+<div id="banner" class="banner hidden"></div>
+
+<section id="nextBox" class="next hidden">
   <div id="nextText">Next workout:</div>
   <button id="markNext" class="primary">Mark next as done</button>
 </section>
 
-<section class="progress">
+<section class="progress hidden" id="progressWrap">
   <div class="bar-wrap"><div class="bar" id="bar"></div></div>
   <div class="statline">
     <div><span id="doneCount">0</span>/<span id="totalCount">0</span> completed</div>
@@ -82,33 +94,33 @@
   </div>
 </section>
 
-<main class="list" id="list"></main>
+<main class="list hidden" id="list"></main>
 
-<footer class="fixed">
+<footer class="fixed hidden" id="footer">
   <button id="export" class="primary">Export progress</button>
-  <input id="importFile" type="file" accept="application/json"/>
+  <input id="importFile" type="file" accept="application/json" />
   <button id="importBtn">Import</button>
   <button id="installBtn">Add to Home</button>
 </footer>
 
 <!-- Onboarding Modal -->
-<div class="modal" id="onboardModal" role="dialog" aria-modal="true">
+<div class="modal hidden" id="onboardModal" role="dialog" aria-modal="true">
   <div class="sheet">
-    <h2 style="margin:0 0 8px 0;">Welcome 👋</h2>
-    <p style="margin-top:0;color:var(--muted)">Let's customize your plan. You can change this anytime.</p>
+    <h2 style="margin:0 0 8px 0;">Let’s customize your plan</h2>
+    <p style="margin-top:0;color:var(--muted)">You can change this anytime.</p>
     <div class="grid">
       <div class="row">
-        <label>What's the longest distance you can comfortably run today? (km)</label>
+        <label>Longest distance you can run today (km)</label>
         <input id="q_longest" type="number" min="0" step="0.1" placeholder="e.g., 3">
       </div>
       <div class="row">
-        <label>How fast can you currently run 3 km? (mm:ss)</label>
+        <label>Current 3 km time (mm:ss)</label>
         <input id="q_3k" type="text" placeholder="e.g., 18:00">
       </div>
       <div class="row">
         <label>Your goal</label>
         <select id="q_goal">
-          <option value="health">General health / casual running</option>
+          <option value="health">General health / casual</option>
           <option value="distance">Run a specific distance</option>
           <option value="time">Run a distance under a target time</option>
         </select>
@@ -119,29 +131,26 @@
           <input id="q_target_km" type="number" step="0.1" placeholder="e.g., 21.1">
         </div>
         <div class="row">
-          <label>Target time (mm:ss) — optional unless time goal</label>
-          <input id="q_target_time" type="text" placeholder="e.g., 01:59:00 for HM">
+          <label>Target time (hh:mm:ss) — optional unless time goal</label>
+          <input id="q_target_time" type="text" placeholder="e.g., 01:59:00">
         </div>
         <div class="row" style="grid-column:1/-1;">
-          <label>Do you have a specific target date?</label>
+          <label>Target date (optional)</label>
           <input id="q_target_date" type="date">
         </div>
       </div>
       <div class="row">
-        <label>Start training from date</label>
+        <label>Start date</label>
         <input id="q_start" type="date">
       </div>
       <div class="row">
-        <label>How many run days per week?</label>
+        <label>Run days per week</label>
         <select id="q_days">
           <option value="3">3</option>
           <option value="4" selected>4</option>
         </select>
       </div>
-      <div class="row">
-        <small class="ok">Tip: You can re-open this wizard any time with “Reset & Replan”.</small>
-      </div>
-      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
         <button id="cancelOnboard" class="ghost">Cancel</button>
         <button id="saveOnboard" class="primary">Create my plan</button>
       </div>
@@ -149,385 +158,354 @@
   </div>
 </div>
 
-<script>
-/* =====================
-   Minimal "multi-user" state via Firebase (optional) + localStorage fallback
-   ===================== */
-const FIREBASE_ENABLED = true; // set to true after adding your Firebase config below
-// Paste your Firebase config here if you enable it:
-const FIREBASE_CONFIG = {
+<!-- ========== Firebase (modular) + App code ========== -->
+<script type="module">
+  /********** 1) CONFIGURE FIREBASE HERE **********/
+  const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCsk8uKyjaRUVih6HGUsPpwSUX_VI4bZwk",
   authDomain: "workout-planer-cd10f.firebaseapp.com",
   projectId: "workout-planer-cd10f",
   storageBucket: "workout-planer-cd10f.firebasestorage.app",
   messagingSenderId: "450896422196",
   appId: "1:450896422196:web:0b3f45b17b62881ee9f161"
-	};
+  };
+  const HAS_CONFIG = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("YOUR_");
 
-let currentUser = { uid: "local", displayName: "Guest" }; // fallback
-const LS_PREFIX = "hmx_";
-function lsKey(k){ return LS_PREFIX + (currentUser?.uid || "local") + "_" + k; }
+  // Firebase imports (modular)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { 
+    getAuth, GoogleAuthProvider, OAuthProvider,
+    onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* =====================
-   Utilities
-   ===================== */
-function parseTimeToMinutes(str){
-  if(!str) return null;
-  const parts = str.split(":").map(x=>parseInt(x,10));
-  if(parts.length === 3){ return parts[0]*60 + parts[1] + (parts[2]/60); } // hh:mm:ss
-  if(parts.length === 2){ return parts[0] + (parts[1]/60); } // mm:ss
-  if(parts.length === 1){ return parseFloat(parts[0]); } // minutes
-  return null;
-}
-function formatDate(d){ return d.toISOString().slice(0,10); }
+  // UI
+  const loginGate = document.getElementById('loginGate');
+  const loginGoogle = document.getElementById('loginGoogle');
+  const loginApple  = document.getElementById('loginApple');
+  const loginMsg    = document.getElementById('loginMsg');
+  const continueGuest = document.getElementById('continueGuest');
 
-/* =====================
-   Planner "AI" stub + heuristic engine
-   ===================== */
-async function callPlannerAI(profile){
-  // Stub: If you later wire to an API, return the same shape this function currently returns.
-  return generatePlan(profile);
-}
-
-function generatePlan(profile){
-  // Heuristic: foundation weeks depend on current longest run and 3k time
-  const startDate = new Date(profile.startDate);
-  const runDays = (profile.daysPerWeek||4)==4?["Mon","Wed","Sat","Sun"]:["Tue","Thu","Sat"];
-  const weeks = [];
-  const start3kMin = parseTimeToMinutes(profile.recent3k) || 18;
-  const baseLongest = Math.max(2.5, parseFloat(profile.longestKm||3));
-
-  const needFoundation = baseLongest < 4 || start3kMin >= 18;
-  const foundationWeeks = needFoundation ? 4 : 0;
-
-  // Build foundation phase (up to 4 weeks)
-  for(let w=0; w<foundationWeeks; w++){
-    const long = baseLongest + w*0.5 + 0.5;
-    const wk = weekTemplate(runDays);
-    wk.week = w - (foundationWeeks-1);
-    wk.sessions = [
-      {type:"E", text:`E: ${Math.max(2.5, Math.round((baseLongest + w*0.5)*10)/10)} km`},
-      {type:"Run/Walk", text:`Run/Walk 5×(2-3 min run / 1 min walk)`},
-      {type:"L", text:`L: ${Math.round(long*10)/10} km`},
-      {type:"Walk", text:`Walk 30–40 min`},
-    ];
-    weeks.push(wk);
-  }
-
-  // Determine main plan length
-  let totalWeeks = 16;
-  if(profile.goalType!=="health" && profile.targetDate){
-    const today = new Date(profile.startDate);
-    const tdate = new Date(profile.targetDate);
-    const diffWeeks = Math.max(8, Math.round((tdate - today)/(1000*60*60*24*7)));
-    totalWeeks = Math.min(24, Math.max(12, diffWeeks)); // 12–24 weeks bound
-  }
-
-  // Build progressive plan
-  let e=3, l=4; // starting easy, long
-  const speedMenu = [
-    "S: 4×400m fast / 400m jog",
-    "S: 5×400m",
-    "S: 4×600m",
-    "S: 6×400m",
-    "S: 5×600m",
-    "S: 6×500m",
-    "S: 4×800m",
-    "S: 5×800m",
-    "S: 6×800m",
-    "S: 5×1 km",
-    "S: 6×1 km",
-    "S: 8×600m"
-  ];
-  let sp=0;
-  const mainWeeks = totalWeeks;
-  for(let w=1; w<=mainWeeks; w++){
-    const wk = weekTemplate(runDays);
-    wk.week = w;
-    const S = speedMenu[Math.min(sp, speedMenu.length-1)];
-    if(w%1===0) e = e + (w%2===0?0.5:0); // grow easy slowly
-    if(w>1 && w<=14) l += (w%2===0?1:0); // long run increases ~ every other week until ~18km
-
-    wk.sessions = [
-      {type:"E", text:`E: ${round1(e)} km`},
-      {type:"S", text:S},
-      {type:"L", text:`L: ${Math.min(round1(l), profile.goalKm?Math.max(12, profile.goalKm*0.85):18)} km`},
-      {type:"E", text:`E: ${round1(Math.max(3, e-1))} km`},
-    ];
-    weeks.push(wk);
-    sp++;
-  }
-
-  // Taper in last 2 weeks if goal is distance/time
-  if(profile.goalType!=="health"){
-    const last = weeks.filter(w=>w.week>0).slice(-2);
-    if(last.length===2){
-      last[0].sessions[0].text = "E: 6 km";
-      last[0].sessions[2].text = "L: 12 km";
-      last[1].sessions = [
-        {type:"E", text:"E: 4 km"},
-        {type:"S", text:"S: 4×400m"},
-        {type:"Rest", text:"Rest"},
-        {type:"Race", text:`Race: ${profile.goalKm||21.1} km`},
-      ];
-    }
-  }
-
-  // Place sessions on dates
-  const items = [];
-  let anchor = new Date(startDate);
-  const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
-  weeks.forEach(wk=>{
-    runDays.slice(0,wk.sessions.length).forEach((day, i)=>{
-      const session = wk.sessions[i];
-      const d = new Date(anchor); d.setDate(anchor.getDate() + dayOffsets[day]);
-      items.push({ week: wk.week, day, date: formatDate(d), workout: session.text });
-    });
-    anchor.setDate(anchor.getDate()+7);
-  });
-
-  return { items, runDays };
-}
-
-function weekTemplate(days){ return { week: 0, sessions: [], days }; }
-function round1(x){ return Math.round(x*10)/10; }
-
-/* =====================
-   Rendering and state
-   ===================== */
-function getProfile(){
-  try { return JSON.parse(localStorage.getItem(lsKey("profile"))); } catch(e){ return null; }
-}
-function setProfile(p){
-  localStorage.setItem(lsKey("profile"), JSON.stringify(p));
-}
-function getState(){ try { return JSON.parse(localStorage.getItem(lsKey("state"))) || {}; } catch(e){ return {}; } }
-function setState(s){ localStorage.setItem(lsKey("state"), JSON.stringify(s)); }
-
-function typeFromText(t) {
-  if (t.startsWith("E:")) return "e";
-  if (t.startsWith("S:")) return "s";
-  if (t.startsWith("L:")) return "l";
-  if (t.includes("Race")) return "race";
-  if (t.includes("Rest")) return "rest";
-  if (t.includes("Run/Walk")) return "runwalk";
-  if (t.includes("Walk")) return "walk";
-  return "e";
-}
-
-let PLAN = { data: [] };
-async function buildPlanAndRender(){
-  const prof = getProfile();
-  if(!prof){ openOnboarding(); return; }
-  PLAN = await callPlannerAI(prof);
-  renderList();
-}
-
-function renderList(){
-  const list = document.getElementById('list');
-  list.innerHTML = "";
-  const state = getState();
-  const weeks = [...new Set(PLAN.items.map(i=>i.week))].sort((a,b)=>a-b);
-  const weekFilter = document.getElementById('weekFilter');
-  weekFilter.innerHTML = weeks.map(w=>`<option value="${w}">Week ${w}</option>`).join("");
-  if(state.filterWeek==null) state.filterWeek = weeks[0];
-  weekFilter.value = state.filterWeek;
-  const total = PLAN.items.length;
-  document.getElementById('totalCount').textContent = total;
-
-  // Next workout banner
-  const today = new Date().toISOString().slice(0,10);
-  const next = PLAN.items.find(i=>!state["w"+PLAN.items.indexOf(i)] && i.date >= today);
+  const appHeader = document.getElementById('appHeader');
+  const banner = document.getElementById('banner');
   const nextBox = document.getElementById('nextBox');
-  if(next){
-    nextBox.classList.remove("hidden");
-    document.getElementById('nextText').innerHTML = `Next workout: <strong>${next.workout}</strong> • ${next.day} • ${next.date}`;
-    document.getElementById('markNext').onclick = ()=>{
-      const idx = PLAN.items.indexOf(next);
-      state["w"+idx] = true; setState(state); updateProgress(); renderList();
-    };
-  } else { nextBox.classList.add("hidden"); }
+  const nextText = document.getElementById('nextText');
+  const markNext = document.getElementById('markNext');
+  const progressWrap = document.getElementById('progressWrap');
+  const list = document.getElementById('list');
+  const footer = document.getElementById('footer');
+  const userBadge = document.getElementById('userBadge');
+  const signoutBtn = document.getElementById('signout');
 
-  PLAN.items.forEach((it, idx)=>{
-    const show = (state.filterWeek==null || it.week == state.filterWeek);
-    const card = document.createElement('div');
-    card.className = 'card';
-    if(!show) card.style.display = 'none';
+  const weekFilter = document.getElementById('weekFilter');
+  const showAll = document.getElementById('showAll');
+  const markWeek = document.getElementById('markWeek');
+  const resetPlan = document.getElementById('resetPlan');
+  const exportBtn = document.getElementById('export');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  const installBtn = document.getElementById('installBtn');
 
-    const id = "w"+idx;
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = !!state[id];
-    cb.addEventListener('change', ()=>{ state[id]=cb.checked; setState(state); updateProgress(); });
-
-    const content = document.createElement('div');
-    const wline = document.createElement('div'); wline.className = 'workout'; wline.textContent = it.workout;
-    const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = `Week ${it.week} • ${it.day} • ${it.date}`;
-    const pill = document.createElement('span'); const type = typeFromText(it.workout); pill.className='pill type-'+type; pill.textContent=type.toUpperCase();
-
-    const details = document.createElement('details');
-    const summary = document.createElement('summary'); summary.textContent='Add notes';
-    const fields = document.createElement('div');
-    fields.innerHTML = `
-      <div style="display:grid; gap:8px; margin-top:8px;">
-        <input class="note" id="time_${id}" placeholder="Time (min)" inputmode="decimal">
-        <input class="note" id="dist_${id}" placeholder="Distance (km)" inputmode="decimal">
-        <input class="note" id="hr_${id}" placeholder="Avg HR">
-        <textarea class="note" id="notes_${id}" rows="2" placeholder="Notes"></textarea>
-      </div>`;
-
-    ["time_","dist_","hr_","notes_"].forEach(k=>{
-      const el = fields.querySelector("#"+k+id);
-      if(state[k+id]) el.value = state[k+id];
-      el.addEventListener('input', ()=>{ state[k+id]=el.value; setState(state); });
-    });
-
-    details.appendChild(summary); details.appendChild(fields);
-    content.appendChild(wline); content.appendChild(meta); content.appendChild(pill); content.appendChild(details);
-    card.appendChild(cb); card.appendChild(content);
-    list.appendChild(card);
-  });
-
-  updateProgress();
-  hookControls();
-}
-
-function updateProgress(){
-  const state = getState();
-  const total = PLAN.items.length;
-  let done = 0;
-  PLAN.items.forEach((_, idx)=>{ if (state['w'+idx]) done++; });
-  const pct = total ? Math.round(done*100/total) : 0;
-  document.getElementById('doneCount').textContent = done;
-  document.getElementById('percent').textContent = pct + "%";
-  document.getElementById('bar').style.width = pct + "%";
-}
-
-/* =====================
-   Controls
-   ===================== */
-function hookControls(){
-  const state = getState();
-  document.getElementById('weekFilter').onchange = (e)=>{ state.filterWeek=parseInt(e.target.value); setState(state); renderList(); };
-  document.getElementById('showAll').onclick = ()=>{ state.filterWeek=null; setState(state); renderList(); };
-  document.getElementById('markWeek').onclick = ()=>{
-    if(state.filterWeek==null) return;
-    PLAN.items.forEach((it, idx)=>{ if (it.week===state.filterWeek) state['w'+idx]=true; });
-    setState(state); renderList();
-  };
-  document.getElementById('resetPlan').onclick = ()=>{ openOnboarding(true); };
-
-  document.getElementById('export').onclick = ()=>{
-    const blob = new Blob([JSON.stringify({profile:getProfile(), state:getState()}, null, 2)], {type:"application/json"});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hm_backup.json'; a.click();
-  };
-  document.getElementById('importBtn').onclick = ()=>{
-    const f = document.getElementById('importFile').files[0]; if(!f) return;
-    const r = new FileReader(); r.onload = ()=>{ try{ const o=JSON.parse(r.result); if(o.profile) setProfile(o.profile); if(o.state) setState(o.state); buildPlanAndRender(); }catch(e){ alert('Invalid file'); } }; r.readAsText(f);
+  // Local cache helpers (per user)
+  const LS = {
+    key: (uid,k)=>`hmx_${uid||"local"}_${k}`,
+    get:(uid,k)=>{ try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null} },
+    set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)),
   };
 
-  // PWA-ish
-  let deferredPrompt=null;
-  window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBtn').disabled=false; });
-  document.getElementById('installBtn').onclick = async ()=>{
-    if(!deferredPrompt){ alert('Use Share → Add to Home Screen'); return; } deferredPrompt.prompt(); deferredPrompt=null;
-  };
-}
+  let currentUser = null; // { uid, displayName }
+  let PLAN = { items:[], runDays:[] };
+  let db, auth;
 
-/* =====================
-   Onboarding modal
-   ===================== */
-function openOnboarding(isReset=false){
-  const m = document.getElementById('onboardModal'); m.style.display='flex';
-  const qgoal = document.getElementById('q_goal');
-  const extra = document.getElementById('goalExtra');
-  qgoal.onchange = ()=>{ extra.style.display = (qgoal.value==="distance"||qgoal.value==="time")?"grid":"none"; };
-  const start = document.getElementById('q_start'); if(!start.value){ start.value = new Date().toISOString().slice(0,10); }
-  document.getElementById('cancelOnboard').onclick = ()=>{ if(isReset){ m.style.display='none'; } else { /* new user must complete */ alert('Please complete setup to continue.'); } };
-  document.getElementById('saveOnboard').onclick = ()=>{
-    const p = {
-      longestKm: parseFloat(document.getElementById('q_longest').value||"3"),
-      recent3k: document.getElementById('q_3k').value||"18:00",
-      goalType: qgoal.value,
-      targetKm: parseFloat(document.getElementById('q_target_km').value||"0"),
-      targetTime: document.getElementById('q_target_time').value||"",
-      targetDate: document.getElementById('q_target_date').value||"",
-      startDate: document.getElementById('q_start').value || new Date().toISOString().slice(0,10),
-      daysPerWeek: parseInt(document.getElementById('q_days').value||"4",10),
-    };
-    if(p.goalType!=="health"){ p.goalKm = p.targetKm || 21.1; } else { p.goalKm = null; }
-    setProfile(p);
-    setState({}); // reset progress
-    m.style.display='none';
-    buildPlanAndRender();
-  };
-}
-
-/* =====================
-   Firebase Auth scaffolding (Stage 2)
-   ===================== */
-async function initFirebaseIfEnabled(){
-  if(!FIREBASE_ENABLED) { 
-    document.getElementById('signin').classList.add('hidden'); 
-    // Guest mode boot:
-    if(!getProfile()) openOnboarding(); else buildPlanAndRender();
-    return; 
+  function showAppUI(show){
+    [appHeader, progressWrap, list, footer].forEach(el => el.classList.toggle('hidden', !show));
+    loginGate.classList.toggle('hidden', show);
   }
 
-  // Load Firebase compat SDKs
-  const s1 = document.createElement('script'); s1.src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
-  const s2 = document.createElement('script'); s2.src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
-  document.head.appendChild(s1); document.head.appendChild(s2);
-  await new Promise(res=>s2.onload=res);
+  // Boot Firebase (or fall back to local guest)
+  if (HAS_CONFIG) {
+    const app = initializeApp(FIREBASE_CONFIG);
+    auth = getAuth(app);
+    db = getFirestore(app);
 
-  // Init
-  firebase.initializeApp(FIREBASE_CONFIG);
-  const auth = firebase.auth();
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+    const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
+    const apple  = new OAuthProvider('apple.com'); // requires Apple setup in Firebase Console
 
-  // Handle redirect result (mobile-friendly)
-  auth.getRedirectResult().catch(()=>{ /* ignore */ });
+    // Redirect result (after returning from provider)
+    getRedirectResult(auth).catch(()=>{});
 
-  auth.onAuthStateChanged((user)=>{
-    if(user){
-      currentUser = { uid:user.uid, displayName:user.displayName||"User" };
-      document.getElementById('userBadge').textContent = currentUser.displayName; 
-      document.getElementById('signin').classList.add('hidden'); 
-      document.getElementById('signout').classList.remove('hidden');
+    loginGoogle.onclick = ()=>signInWithRedirect(auth, google);
+    loginApple.onclick  = async ()=>{
+      try { await signInWithRedirect(auth, apple); }
+      catch (e) { loginMsg.textContent = "Apple sign-in not configured in Firebase. Enable it or use Google."; }
+    };
+    continueGuest.onclick = ()=> { currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
 
-      // If this account has no profile locally, open onboarding
-      if(!getProfile()) openOnboarding();
-      else buildPlanAndRender();
-    }else{
-      currentUser = { uid:"local", displayName:"Guest" };
-      document.getElementById('userBadge').textContent = "Guest";
-      document.getElementById('signin').classList.remove('hidden'); 
-      document.getElementById('signout').classList.add('hidden');
+    onAuthStateChanged(auth, async (user)=>{
+      if (user) {
+        currentUser = { uid:user.uid, displayName:user.displayName || user.email || "User" };
+        enterApp(true);
+      } else {
+        // show login gate
+        showAppUI(false);
+      }
+    });
 
-      if(!getProfile()) openOnboarding(); else buildPlanAndRender();
+    signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); };
+  } else {
+    // No Firebase config → only Guest
+    banner.classList.remove('hidden');
+    banner.textContent = "Firebase not configured — using Guest mode (local only).";
+    loginGoogle.disabled = true; loginApple.disabled = true;
+    continueGuest.onclick = ()=>{ currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
+  }
+
+  /** Enter app (after auth or guest) */
+  async function enterApp(isAuthed=false){
+    userBadge.textContent = currentUser.displayName || "Guest";
+    showAppUI(true);
+
+    // If online+authed, try to load profile/progress from Firestore first
+    let profile = LS.get(currentUser.uid,'profile');
+    let progress = LS.get(currentUser.uid,'progress') || {};
+
+    if (db && isAuthed) {
+      const profSnap = await getDoc(doc(db,"users",currentUser.uid,"profile","default"));
+      if (profSnap.exists()) { profile = profSnap.data(); LS.set(currentUser.uid,'profile',profile); }
+      const progSnap = await getDoc(doc(db,"users",currentUser.uid,"progress","current"));
+      if (progSnap.exists()) { progress = progSnap.data(); LS.set(currentUser.uid,'progress',progress); }
     }
-  });
 
-  // Use redirect (more reliable on iPhone than popup)
-  document.getElementById('signin').onclick = ()=>auth.signInWithRedirect(provider);
+    if (!profile) {
+      openOnboarding(); // forces onboarding for new users
+    } else {
+      await buildPlanAndRender(profile, progress);
+    }
+  }
 
-  // Do NOT clear all localStorage on signout (keeps other users' cached data):
-  document.getElementById('signout').onclick = async ()=>{
-    await auth.signOut();
-    location.reload(); // simple reset to guest
-  };
-}
+  /** ----- Planner / Generator ----- */
+  function parseTimeToMinutes(str){
+    if(!str) return null;
+    const p = str.split(":").map(x=>parseInt(x,10));
+    if(p.length===3) return p[0]*60+p[1]+p[2]/60;
+    if(p.length===2) return p[0]+p[1]/60;
+    return parseFloat(p[0]);
+  }
+  const round1 = x => Math.round(x*10)/10;
+  const formatDate = d => d.toISOString().slice(0,10);
 
-/* =====================
-   Boot
-   ===================== */
-document.getElementById('signin').classList.add(FIREBASE_ENABLED?'':'hidden');
-document.getElementById('signout').classList.add('hidden');
-initFirebaseIfEnabled();
-if(!FIREBASE_ENABLED){
-  // Guest mode
-  if(!getProfile()) openOnboarding(); else buildPlanAndRender();
-}
+  function typeFromText(t){
+    if (t.startsWith("E:")) return "e";
+    if (t.startsWith("S:")) return "s";
+    if (t.startsWith("L:")) return "l";
+    if (t.includes("Race")) return "race";
+    if (t.includes("Rest")) return "rest";
+    if (t.includes("Run/Walk")) return "runwalk";
+    if (t.includes("Walk")) return "walk";
+    return "e";
+  }
+
+  async function callPlannerAI(profile){ return generatePlan(profile); } // stub (replace with API later)
+
+  function generatePlan(profile){
+    const startDate = new Date(profile.startDate);
+    const runDays = (profile.daysPerWeek||4)==4?["Mon","Wed","Sat","Sun"]:["Tue","Thu","Sat"];
+    const items = [];
+    const start3kMin = parseTimeToMinutes(profile.recent3k) || 18;
+    const baseLongest = Math.max(2.5, parseFloat(profile.longestKm||3));
+    const needFoundation = baseLongest < 4 || start3kMin >= 18;
+    const foundationWeeks = needFoundation ? 4 : 0;
+
+    let anchor = new Date(startDate);
+    const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
+
+    // Foundation
+    for(let w=0; w<foundationWeeks; w++){
+      const long = baseLongest + w*0.5 + 0.5;
+      const sessions = [
+        `E: ${round1(Math.max(2.5, baseLongest + w*0.5))} km`,
+        `Run/Walk 5×(2–3 min run / 1 min walk)`,
+        `L: ${round1(long)} km`,
+        `Walk 30–40 min`
+      ];
+      const weekNum = w - (foundationWeeks-1);
+      runDays.slice(0,sessions.length).forEach((day,i)=>{
+        const d = new Date(anchor); d.setDate(anchor.getDate()+dayOffsets[day]);
+        items.push({ week: weekNum, day, date: formatDate(d), workout: sessions[i] });
+      });
+      anchor.setDate(anchor.getDate()+7);
+    }
+
+    // Main plan
+    let totalWeeks = 16;
+    if(profile.goalType!=="health" && profile.targetDate){
+      const tdate = new Date(profile.targetDate);
+      const diffWeeks = Math.max(8, Math.round((tdate - startDate)/(1000*60*60*24*7)));
+      totalWeeks = Math.min(24, Math.max(12, diffWeeks));
+    }
+
+    let e=3, l=4, sp=0;
+    const speedMenu = ["S: 4×400m fast / 400m jog","S: 5×400m","S: 4×600m","S: 6×400m","S: 5×600m","S: 6×500m","S: 4×800m","S: 5×800m","S: 6×800m","S: 5×1 km","S: 6×1 km","S: 8×600m"];
+    for(let w=1; w<=totalWeeks; w++){
+      const S = speedMenu[Math.min(sp, speedMenu.length-1)];
+      if(w%1===0) e += (w%2===0?0.5:0);
+      if(w>1 && w<=14) l += (w%2===0?1:0);
+      const sessions = [
+        `E: ${round1(e)} km`,
+        S,
+        `L: ${Math.min(round1(l), profile.goalKm?Math.max(12, profile.goalKm*0.85):18)} km`,
+        `E: ${round1(Math.max(3, e-1))} km`
+      ];
+      runDays.forEach((day,i)=>{
+        const d = new Date(anchor); d.setDate(anchor.getDate()+dayOffsets[day]);
+        items.push({ week: w, day, date: formatDate(d), workout: sessions[i] || "Rest" });
+      });
+      anchor.setDate(anchor.getDate()+7); sp++;
+    }
+
+    return { items, runDays };
+  }
+
+  // Build & render
+  async function buildPlanAndRender(profile, progress){
+    if(!profile){ openOnboarding(); return; }
+    PLAN = await callPlannerAI(profile);
+    renderList(progress || {});
+  }
+
+  function renderList(progress){
+    list.innerHTML = "";
+    const state = progress || {};
+    const weeks = [...new Set(PLAN.items.map(i=>i.week))].sort((a,b)=>a-b);
+    weekFilter.innerHTML = weeks.map(w=>`<option value="${w}">Week ${w}</option>`).join("");
+    if(state.filterWeek==null) state.filterWeek = weeks[0];
+    weekFilter.value = state.filterWeek;
+    document.getElementById('totalCount').textContent = PLAN.items.length;
+
+    // Next workout
+    const today = new Date().toISOString().slice(0,10);
+    const next = PLAN.items.find((it, idx)=>!state['w'+idx] && it.date >= today);
+    if(next){
+      nextBox.classList.remove('hidden');
+      nextText.innerHTML = `Next workout: <strong>${next.workout}</strong> • ${next.day} • ${next.date}`;
+      markNext.onclick = ()=>{ const idx = PLAN.items.indexOf(next); state['w'+idx]=true; saveProgress(state); updateProgress(state); renderList(state); };
+    } else { nextBox.classList.add('hidden'); }
+
+    PLAN.items.forEach((it, idx)=>{
+      const show = (state.filterWeek==null || it.week == state.filterWeek);
+      const card = document.createElement('div'); card.className='card'; if(!show) card.style.display='none';
+      const id = "w"+idx;
+
+      const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=!!state[id];
+      cb.addEventListener('change', ()=>{ state[id]=cb.checked; saveProgress(state); updateProgress(state); });
+
+      const content = document.createElement('div');
+      const wline = document.createElement('div'); wline.className='workout'; wline.textContent=it.workout;
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = `Week ${it.week} • ${it.day} • ${it.date}`;
+      const pill = document.createElement('span'); const typ=typeFromText(it.workout); pill.className='pill type-'+typ; pill.textContent=typ.toUpperCase();
+
+      const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent='Add notes';
+      const fields = document.createElement('div'); fields.innerHTML = `
+        <div style="display:grid;gap:8px;margin-top:8px;">
+          <input class="note" id="time_${id}" placeholder="Time (min)" inputmode="decimal">
+          <input class="note" id="dist_${id}" placeholder="Distance (km)" inputmode="decimal">
+          <input class="note" id="hr_${id}" placeholder="Avg HR">
+          <textarea class="note" id="notes_${id}" rows="2" placeholder="Notes"></textarea>
+        </div>`;
+      ["time_","dist_","hr_","notes_"].forEach(k=>{
+        const el = fields.querySelector("#"+k+id);
+        if(state[k+id]) el.value = state[k+id];
+        el.addEventListener('input', ()=>{ state[k+id]=el.value; saveProgress(state); });
+      });
+
+      details.appendChild(summary); details.appendChild(fields);
+      content.appendChild(wline); content.appendChild(meta); content.appendChild(pill); content.appendChild(details);
+      card.appendChild(cb); card.appendChild(content);
+      list.appendChild(card);
+    });
+
+    updateProgress(state);
+    hookControls(state);
+    [appHeader, progressWrap, list, footer].forEach(el=>el.classList.remove('hidden'));
+  }
+
+  function updateProgress(state){
+    let done=0; PLAN.items.forEach((_, idx)=>{ if(state['w'+idx]) done++; });
+    const total = PLAN.items.length; const pct = total? Math.round(done*100/total) : 0;
+    document.getElementById('doneCount').textContent = done;
+    document.getElementById('percent').textContent = pct + "%";
+    document.getElementById('bar').style.width = pct + "%";
+  }
+
+  function hookControls(state){
+    weekFilter.onchange = e=>{ state.filterWeek=parseInt(e.target.value); saveProgress(state); renderList(state); };
+    showAll.onclick = ()=>{ state.filterWeek=null; saveProgress(state); renderList(state); };
+    markWeek.onclick = ()=>{ if(state.filterWeek==null) return; PLAN.items.forEach((it, idx)=>{ if (it.week===state.filterWeek) state['w'+idx]=true; }); saveProgress(state); renderList(state); };
+    resetPlan.onclick = ()=> openOnboarding(true);
+
+    exportBtn.onclick = ()=>{
+      const blob = new Blob([JSON.stringify({profile:LS.get(currentUser.uid,'profile'), progress:LS.get(currentUser.uid,'progress')}, null, 2)], {type:"application/json"});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='hm_backup.json'; a.click();
+    };
+    importBtn.onclick = ()=>{
+      const f = importFile.files[0]; if(!f) return;
+      const r = new FileReader(); r.onload = async ()=>{
+        try{
+          const o = JSON.parse(r.result);
+          if(o.profile){ await saveProfile(o.profile); }
+          if(o.progress){ await saveProgress(o.progress); }
+          await buildPlanAndRender(o.profile||LS.get(currentUser.uid,'profile'), o.progress||LS.get(currentUser.uid,'progress'));
+        }catch{ alert('Invalid file'); }
+      }; r.readAsText(f);
+    };
+
+    // PWA-ish
+    let deferredPrompt=null;
+    window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.disabled=false; });
+    installBtn.onclick = async ()=>{ if(!deferredPrompt){ alert('Use Share → Add to Home Screen'); return; } deferredPrompt.prompt(); deferredPrompt=null; };
+  }
+
+  /** ----- Onboarding ----- */
+  function openOnboarding(isReset=false){
+    const m = document.getElementById('onboardModal'); m.classList.remove('hidden');
+    const qgoal = document.getElementById('q_goal'); const extra = document.getElementById('goalExtra');
+    qgoal.onchange = ()=>{ extra.style.display = (qgoal.value==="distance"||qgoal.value==="time")?"grid":"none"; };
+    const start = document.getElementById('q_start'); if(!start.value){ start.value = new Date().toISOString().slice(0,10); }
+    document.getElementById('cancelOnboard').onclick = ()=>{ if(isReset){ m.classList.add('hidden'); } else { alert('Please complete setup to continue.'); } };
+    document.getElementById('saveOnboard').onclick = async ()=>{
+      const p = {
+        longestKm: parseFloat(document.getElementById('q_longest').value||"3"),
+        recent3k: document.getElementById('q_3k').value||"18:00",
+        goalType: qgoal.value,
+        targetKm: parseFloat(document.getElementById('q_target_km').value||"0"),
+        targetTime: document.getElementById('q_target_time').value||"",
+        targetDate: document.getElementById('q_target_date').value||"",
+        startDate: document.getElementById('q_start').value || new Date().toISOString().slice(0,10),
+        daysPerWeek: parseInt(document.getElementById('q_days').value||"4",10),
+      };
+      if(p.goalType!=="health"){ p.goalKm = p.targetKm || 21.1; } else { p.goalKm = null; }
+      await saveProfile(p);
+      m.classList.add('hidden');
+      await buildPlanAndRender(p, LS.get(currentUser.uid,'progress')||{});
+    };
+  }
+
+  /** ----- Cloud sync (Firestore) + local cache ----- */
+  async function saveProfile(profile){
+    LS.set(currentUser.uid,'profile',profile);
+    if(db && currentUser.uid!=="local"){
+      await setDoc(doc(db,"users",currentUser.uid,"profile","default"), profile, { merge:true });
+    }
+  }
+  async function saveProgress(progress){
+    LS.set(currentUser.uid,'progress',progress);
+    if(db && currentUser.uid!=="local"){
+      await setDoc(doc(db,"users",currentUser.uid,"progress","current"), progress, { merge:true });
+    }
+  }
+
 </script>
 </body>
 </html>

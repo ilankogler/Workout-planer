@@ -9,7 +9,8 @@
     --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
     --bg:#0f1115; --card:#171923; --text:#e9edf1; --muted:#a0aec0; --accent:#52c7ea; --danger:#ff6b6b;
   }
-  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
   header{position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(15,17,21,.85);padding:12px 16px;border-bottom:1px solid #2d3748;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:10px}
   h1{margin:0;font-size:18px}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -32,6 +33,7 @@
   details{grid-column:1 / -1}
   textarea,input.note{width:100%;background:#0f1115;color:#e9edf1;border:1px solid #2d3748;border-radius:8px;padding:8px;font-size:14px}
   footer.fixed{position:fixed;bottom:0;left:0;right:0;background:rgba(15,17,21,.95);border-top:1px solid #2d3748;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}
+
   .next{background:#12202a;border:1px solid #244b57;border-radius:12px;padding:10px 12px;margin:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
   .next strong{color:#9be7ff}
   .hidden{display:none !important}
@@ -42,7 +44,13 @@
   .row{display:grid;gap:6px}
   .note{color:#a0aec0;font-size:12px}
   .stack{display:grid;gap:8px}
-  .inline{display:flex;gap:8px;align-items:center}
+
+  /* Anonymous badge tooltip */
+  .userline{display:flex;align-items:center;gap:8px}
+  .anon-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:var(--danger);color:#0b0e10;font-weight:700;font-size:12px;cursor:help;position:relative}
+  .anon-tip{position:absolute;top:120%;left:50%;transform:translateX(-50%);background:#2a0f0f;color:#ffdada;border:1px solid #ff9a9a;border-radius:8px;padding:8px 10px;width:260px;font-size:12px;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s}
+  .anon-dot:hover .anon-tip{opacity:1;pointer-events:auto}
+  .anon-dot:focus .anon-tip{opacity:1;pointer-events:auto}
 </style>
 </head>
 <body>
@@ -58,39 +66,20 @@
 
       <div style="height:1px;background:#2d3748;margin:8px 0"></div>
 
-      <div class="row">
-        <label for="phoneInput">Phone number (E.164, e.g. +972501234567)</label>
-        <input id="phoneInput" type="tel" placeholder="+972..." inputmode="tel"/>
-        <div id="recaptcha-container"></div>
-        <div class="inline">
-          <button id="sendCode" class="ghost">Send code</button>
-          <span id="sendMsg" class="note"></span>
-        </div>
-      </div>
-
-      <div class="row">
-        <label for="codeInput">Verification code (SMS)</label>
-        <input id="codeInput" type="text" placeholder="123456" inputmode="numeric" />
-        <div class="inline">
-          <button id="verifyCode" class="primary">Verify & Sign in</button>
-          <span id="verifyMsg" class="note"></span>
-        </div>
-      </div>
+      <button id="continueAnon" class="ghost">Continue without login (Temporary)</button>
+      <div class="note">⚠️ <strong>Temporary account:</strong> your data may be lost if you don’t sign in with Google later.</div>
     </div>
 
     <div id="loginMsg" class="note"></div>
-
-    <div style="height:1px;background:#2d3748;margin:8px 0"></div>
-
-    <button id="continueGuest" class="ghost">Continue as Guest (local only)</button>
   </div>
 </section>
 
-<!-- ---------- APP (hidden until signed in / guest) ---------- -->
+<!-- ---------- APP (hidden until signed in) ---------- -->
 <header id="appHeader" class="hidden">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <h1>Half Marathon Planner</h1>
-    <span class="badge" id="userBadge">Guest</span>
+  <div class="userline">
+    <h1 style="margin-right:8px;">Half Marathon Planner</h1>
+    <span class="badge" id="userBadge">User</span>
+    <span id="anonBadge" class="anon-dot hidden" tabindex="0" aria-label="Anonymous account">?</span>
   </div>
   <div class="controls">
     <select id="weekFilter"></select>
@@ -126,11 +115,11 @@
 </footer>
 
 <!-- Onboarding Modal -->
-<div class="modal hidden" id="onboardModal" role="dialog" aria-modal="true">
-  <div class="sheet">
+<div class="modal hidden" id="onboardModal" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,8,12,.65);z-index:100;">
+  <div class="sheet" style="width:min(680px,94vw);max-height:90vh;overflow:auto;background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:16px">
     <h2 style="margin:0 0 8px 0;">Let’s customize your plan</h2>
     <p style="margin-top:0;color:var(--muted)">You can change this anytime.</p>
-    <div class="grid">
+    <div class="grid" style="display:grid;gap:10px">
       <div class="row">
         <label>Longest distance you can run today (km)</label>
         <input id="q_longest" type="number" min="0" step="0.1" placeholder="e.g., 3">
@@ -147,7 +136,7 @@
           <option value="time">Run a distance under a target time</option>
         </select>
       </div>
-      <div class="grid two" id="goalExtra" style="display:none;">
+      <div class="grid two" id="goalExtra" style="display:none;grid-template-columns:1fr 1fr;gap:10px">
         <div class="row">
           <label>Target distance (km)</label>
           <input id="q_target_km" type="number" step="0.1" placeholder="e.g., 21.1">
@@ -196,25 +185,15 @@
   // Firebase imports (modular)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { 
-    getAuth, GoogleAuthProvider, RecaptchaVerifier,
-    onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut, signInWithPhoneNumber
+    getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import {
-    getFirestore, doc, getDoc, setDoc
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // UI elements
   const loginGate = document.getElementById('loginGate');
   const loginGoogle = document.getElementById('loginGoogle');
-  const continueGuest = document.getElementById('continueGuest');
+  const continueAnon = document.getElementById('continueAnon');
   const loginMsg = document.getElementById('loginMsg');
-
-  const phoneInput = document.getElementById('phoneInput');
-  const sendCodeBtn = document.getElementById('sendCode');
-  const codeInput = document.getElementById('codeInput');
-  const verifyCodeBtn = document.getElementById('verifyCode');
-  const sendMsg = document.getElementById('sendMsg');
-  const verifyMsg = document.getElementById('verifyMsg');
 
   const appHeader = document.getElementById('appHeader');
   const banner = document.getElementById('banner');
@@ -225,6 +204,7 @@
   const list = document.getElementById('list');
   const footer = document.getElementById('footer');
   const userBadge = document.getElementById('userBadge');
+  const anonBadge = document.getElementById('anonBadge');
   const signoutBtn = document.getElementById('signout');
 
   const weekFilter = document.getElementById('weekFilter');
@@ -236,119 +216,108 @@
   const importFile = document.getElementById('importFile');
   const installBtn = document.getElementById('installBtn');
 
-  // Local cache helpers (per user)
-  const LS = {
-    key: (uid,k)=>`hmx_${uid||"local"}_${k}`,
-    get:(uid,k)=>{ try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null} },
-    set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)),
-  };
+  // Local cache per user id
+  const LS = { key:(uid,k)=>`hmx_${uid}_${k}`, get:(uid,k)=>{try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null}}, set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)) };
 
-  let currentUser = null; // { uid, displayName }
+  let currentUser = null; // { uid, displayName, isAnonymous }
   let PLAN = { items:[], runDays:[] };
-  let db, auth, confirmationResult = null;
+  let db, auth;
 
   function showAppUI(show){
     [appHeader, progressWrap, list, footer].forEach(el => el.classList.toggle('hidden', !show));
     loginGate.classList.toggle('hidden', show);
   }
+  function setMsg(el, msg){ el.textContent = msg || ""; }
 
-  // Boot Firebase (or fall back to local guest)
+  // Initialize Firebase (or guest-only banner)
   if (HAS_CONFIG) {
     const app = initializeApp(FIREBASE_CONFIG);
     auth = getAuth(app);
     db = getFirestore(app);
 
-    // Google Provider
+    // Google Provider (redirect is most reliable on iPhone)
     const google = new GoogleAuthProvider();
     google.setCustomParameters({ prompt:'select_account' });
 
-    // reCAPTCHA for phone
-    let recaptchaVerifier;
-    function ensureRecaptcha(){
-      if (!recaptchaVerifier) {
-        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          'size': 'invisible', // use 'normal' to show the widget if you prefer
-        });
-      }
-      return recaptchaVerifier;
-    }
+    // Handle redirect result & show any errors on-page
+    getRedirectResult(auth)
+      .then(res => {
+        if (res && res.user) setMsg(loginMsg, `Signed in as ${res.user.displayName || res.user.email || res.user.uid}`);
+      })
+      .catch(err => setMsg(loginMsg, `Auth error after redirect: ${err.message || err}`));
 
-    // Redirect result (after returning from Google)
-    getRedirectResult(auth).catch(()=>{});
-
-    // Click handlers
-    loginGoogle.onclick = ()=> signInWithRedirect(auth, google);
-    continueGuest.onclick = ()=> { currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
-
-    sendCodeBtn.onclick = async () => {
-      sendMsg.textContent = ""; verifyMsg.textContent = "";
-      const phoneNumber = (phoneInput.value || "").trim();
-      if(!phoneNumber.startsWith('+')) { sendMsg.textContent = "Use international format, e.g. +972..."; return; }
-      try{
-        const appVerifier = ensureRecaptcha();
-        confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-        sendMsg.textContent = "Code sent. Check your SMS.";
-      }catch(e){
-        sendMsg.textContent = "Failed to send code: " + (e.message||e);
+    // Wire buttons
+    loginGoogle.onclick = ()=>{ setMsg(loginMsg, "Redirecting to Google…"); signInWithRedirect(auth, google); };
+    continueAnon.onclick = async ()=>{
+      try {
+        await signInAnonymously(auth);
+        // onAuthStateChanged will handle the rest
+      } catch(e){
+        setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message || e));
       }
     };
-
-    verifyCodeBtn.onclick = async () => {
-      verifyMsg.textContent = "";
-      const code = (codeInput.value||"").trim();
-      if(!confirmationResult) { verifyMsg.textContent = "Send the code first."; return; }
-      try{
-        const cred = await confirmationResult.confirm(code);
-        // user signed in
-      }catch(e){
-        verifyMsg.textContent = "Invalid code. Try again.";
-      }
-    };
-
-    // Auth listener
-    onAuthStateChanged(auth, async (user)=>{
-      if (user) {
-        currentUser = { uid:user.uid, displayName:user.displayName || user.phoneNumber || user.email || "User" };
-        await enterApp(true);
-      } else {
-        // show login gate
-        showAppUI(false);
-      }
-    });
 
     signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); };
 
+    // Auth state drives the UI
+    onAuthStateChanged(auth, async (user)=>{
+      if (user) {
+        currentUser = { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous };
+        userBadge.textContent = currentUser.displayName;
+        // Show red question mark & tooltip if anonymous
+        if (currentUser.isAnonymous) {
+          anonBadge.innerHTML = '?<span class="anon-tip">Temporary account: your data may be lost if you don’t sign in with Google later. You can upgrade anytime from this menu.</span>';
+          anonBadge.classList.remove('hidden');
+          // Tap-to-toggle for mobile
+          anonBadge.onclick = (e)=>{ 
+            const tip = anonBadge.querySelector('.anon-tip'); 
+            tip.style.opacity = tip.style.opacity === '1' ? '0' : '1'; 
+            tip.style.pointerEvents = tip.style.pointerEvents === 'auto' ? 'none':'auto';
+            e.stopPropagation();
+          };
+          document.body.addEventListener('click', ()=>{ 
+            const tip = anonBadge.querySelector('.anon-tip'); 
+            if(tip){ tip.style.opacity='0'; tip.style.pointerEvents='none'; }
+          });
+        } else {
+          anonBadge.classList.add('hidden');
+        }
+        await enterApp(true);
+      } else {
+        showAppUI(false);
+        setMsg(loginMsg, "Sign in with Google, or continue temporarily.");
+      }
+    });
+
   } else {
-    // No Firebase config → only Guest
     banner.classList.remove('hidden');
-    banner.textContent = "Firebase not configured — using Guest mode (local only).";
+    banner.textContent = "Firebase not configured — please add your config in the HTML.";
+    // Hide Google/Anon actions if there is no config
     loginGoogle.disabled = true;
-    sendCodeBtn.disabled = true;
-    verifyCodeBtn.disabled = true;
-    continueGuest.onclick = ()=>{ currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
+    continueAnon.disabled = true;
   }
 
-  /** Enter app (after auth or guest) */
+  /** Enter app (after auth) */
   async function enterApp(isAuthed=false){
-    userBadge.textContent = currentUser.displayName || "Guest";
     showAppUI(true);
+    // Load profile/progress from cache first
+    let profile = LS.get(auth.currentUser.uid,'profile');
+    let progress = LS.get(auth.currentUser.uid,'progress') || {};
 
-    // Load profile/progress (cloud → local)
-    let profile = LS.get(currentUser.uid,'profile');
-    let progress = LS.get(currentUser.uid,'progress') || {};
-
-    if (db && isAuthed && currentUser.uid!=="local") {
-      const profSnap = await getDoc(doc(db,"users",currentUser.uid,"profile","default"));
-      if (profSnap.exists()) { profile = profSnap.data(); LS.set(currentUser.uid,'profile',profile); }
-      const progSnap = await getDoc(doc(db,"users",currentUser.uid,"progress","current"));
-      if (progSnap.exists()) { progress = progSnap.data(); LS.set(currentUser.uid,'progress',progress); }
+    // If signed in (anon or google), try cloud load then cache
+    if (db && isAuthed) {
+      try{
+        const profSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"profile","default"));
+        if (profSnap.exists()) { profile = profSnap.data(); LS.set(auth.currentUser.uid,'profile',profile); }
+        const progSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"progress","current"));
+        if (progSnap.exists()) { progress = progSnap.data(); LS.set(auth.currentUser.uid,'progress',progress); }
+      }catch(e){
+        setMsg(loginMsg, `Firestore load error: ${e.message || e}`);
+      }
     }
 
-    if (!profile) {
-      openOnboarding(); // new user
-    } else {
-      await buildPlanAndRender(profile, progress);
-    }
+    if (!profile) { openOnboarding(); }
+    else { await buildPlanAndRender(profile, progress); }
   }
 
   /** ----- Planner / Generator ----- */
@@ -386,6 +355,7 @@
     let anchor = new Date(startDate);
     const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
 
+    // Foundation block (if needed)
     for(let w=0; w<foundationWeeks; w++){
       const long = baseLongest + w*0.5 + 0.5;
       const sessions = [
@@ -394,7 +364,7 @@
         `L: ${round1(long)} km`,
         `Walk 30–40 min`
       ];
-      const weekNum = w - (foundationWeeks-1);
+      const weekNum = w - (foundationWeeks-1); // negative-to-zero weeks
       runDays.slice(0,sessions.length).forEach((day,i)=>{
         const d = new Date(anchor); d.setDate(anchor.getDate()+dayOffsets[day]);
         items.push({ week: weekNum, day, date: formatDate(d), workout: sessions[i] });
@@ -402,6 +372,7 @@
       anchor.setDate(anchor.getDate()+7);
     }
 
+    // Main plan
     let totalWeeks = 16;
     if(profile.goalType!=="health" && profile.targetDate){
       const tdate = new Date(profile.targetDate);
@@ -433,8 +404,7 @@
 
   async function buildPlanAndRender(profile, progress){
     if(!profile){ openOnboarding(); return; }
-    const plan = await callPlannerAI(profile);
-    PLAN = plan;
+    PLAN = await callPlannerAI(profile);
     renderList(progress || {});
   }
 
@@ -445,8 +415,8 @@
     weekFilter.innerHTML = weeks.map(w=>`<option value="${w}">Week ${w}</option>`).join("");
     if(state.filterWeek==null) state.filterWeek = weeks[0];
     weekFilter.value = state.filterWeek;
-    document.getElementById('totalCount').textContent = PLAN.items.length;
-
+    document.getElementById('totalCount')?.remove(); // ensure not referenced
+    // Next workout
     const today = new Date().toISOString().slice(0,10);
     const next = PLAN.items.find((it, idx)=>!state['w'+idx] && it.date >= today);
     if(next){
@@ -496,7 +466,7 @@
   function updateProgress(state){
     let done=0; PLAN.items.forEach((_, idx)=>{ if(state['w'+idx]) done++; });
     const total = PLAN.items.length; const pct = total? Math.round(done*100/total) : 0;
-    document.getElementById('doneCount').textContent = done;
+    // Render a simple bar + text
     document.getElementById('percent').textContent = pct + "%";
     document.getElementById('bar').style.width = pct + "%";
   }
@@ -508,7 +478,7 @@
     resetPlan.onclick = ()=> openOnboarding(true);
 
     exportBtn.onclick = ()=>{
-      const blob = new Blob([JSON.stringify({profile:LS.get(currentUser.uid,'profile'), progress:LS.get(currentUser.uid,'progress')}, null, 2)], {type:"application/json"});
+      const blob = new Blob([JSON.stringify({profile:LS.get(auth.currentUser.uid,'profile'), progress:LS.get(auth.currentUser.uid,'progress')}, null, 2)], {type:"application/json"});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='hm_backup.json'; a.click();
     };
     importBtn.onclick = ()=>{
@@ -518,7 +488,7 @@
           const o = JSON.parse(r.result);
           if(o.profile){ await saveProfile(o.profile); }
           if(o.progress){ await saveProgress(o.progress); }
-          await buildPlanAndRender(o.profile||LS.get(currentUser.uid,'profile'), o.progress||LS.get(currentUser.uid,'progress'));
+          await buildPlanAndRender(o.profile||LS.get(auth.currentUser.uid,'profile'), o.progress||LS.get(auth.currentUser.uid,'progress'));
         }catch{ alert('Invalid file'); }
       }; r.readAsText(f);
     };
@@ -550,24 +520,33 @@
       if(p.goalType!=="health"){ p.goalKm = p.targetKm || 21.1; } else { p.goalKm = null; }
       await saveProfile(p);
       document.getElementById('onboardModal').classList.add('hidden');
-      await buildPlanAndRender(p, LS.get(currentUser.uid,'progress')||{});
+      await buildPlanAndRender(p, LS.get(auth.currentUser.uid,'progress')||{});
     };
   }
 
   /** ----- Cloud sync (Firestore) + local cache ----- */
   async function saveProfile(profile){
-    LS.set(currentUser.uid,'profile',profile);
-    if(db && currentUser.uid!=="local"){
-      await setDoc(doc(db,"users",currentUser.uid,"profile","default"), profile, { merge:true });
-    }
+    LS.set(auth.currentUser.uid,'profile',profile);
+    if(db){ await setDoc(doc(db,"users",auth.currentUser.uid,"profile","default"), profile, { merge:true }); }
   }
   async function saveProgress(progress){
-    LS.set(currentUser.uid,'progress',progress);
-    if(db && currentUser.uid!=="local"){
-      await setDoc(doc(db,"users",currentUser.uid,"progress","current"), progress, { merge:true });
-    }
+    LS.set(auth.currentUser.uid,'progress',progress);
+    if(db){ await setDoc(doc(db,"users",auth.currentUser.uid,"progress","current"), progress, { merge:true }); }
   }
 
+  // Optional: helper to upgrade anon → Google while preserving data
+  window.upgradeToGoogle = async function(){
+    try{
+      const provider = new GoogleAuthProvider();
+      await linkWithPopup(auth.currentUser, provider);
+      alert("Account linked to Google. Your data is now permanent.");
+      location.reload();
+    }catch(e){
+      alert("Link failed: " + (e.message||e));
+    }
+  };
 </script>
+
+
 </body>
 </html>

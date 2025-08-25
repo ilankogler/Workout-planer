@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Half Marathon Planner — Diagnostic</title>
+<title>Half Marathon Planner — Redirect Build</title>
 <style>
   :root{
     --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
@@ -183,7 +183,7 @@
   </div>
 </div>
 
-<!-- ========== Firebase + App Code (Diagnostic build) ========== -->
+<!-- ========== Firebase + App Code (Redirect build) ========== -->
 <script type="module">
   /********** 1) PASTE YOUR FIREBASE CONFIG **********/
   const FIREBASE_CONFIG = {
@@ -199,7 +199,7 @@
   /********** Firebase (modular) **********/
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getAuth, setPersistence, browserLocalPersistence,
+    initializeAuth, browserLocalPersistence, browserPopupRedirectResolver,
     GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithPopup,
     onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -239,14 +239,14 @@
   debugToggle.onclick = ()=>{ const hide = debugBody.style.display!=='none'; debugBody.style.display = hide?'none':''; debugToggle.textContent = hide?'Show':'Hide'; };
   const bootInfo = { host: location.host, HAS_CONFIG, projectId: FIREBASE_CONFIG.projectId };
   function logDebug(obj){ debugText.textContent = JSON.stringify(obj, null, 2); }
+  function setMsg(el, msg){ if(el) el.textContent = msg || ""; }
 
   /********** Helpers **********/
   const LS = { key:(uid,k)=>`hmx_${uid}_${k}`, get:(uid,k)=>{try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null}}, set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)) };
   function showAppUI(show){ [appHeader, progressWrap, list, footer].forEach(el=>el.classList.toggle('hidden', !show)); loginGate.classList.toggle('hidden', show); }
-  function setMsg(el, msg){ if(el) el.textContent = msg || ""; }
 
   /********** Global state **********/
-  let auth=null, db=null, currentUser=null, lastRedirect = null, lastPopup=null, listenerFired=false, uiSwitched=false;
+  let auth=null, db=null, currentUser=null, lastRedirect=null, lastPopup=null, listenerFired=false, uiSwitched=false;
 
   /********** Boot **********/
   try {
@@ -257,12 +257,18 @@
       continueAnon.disabled = true;
       logDebug({ ...bootInfo, status: "NO_CONFIG" });
     } else {
+      // Single app
       const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
-      auth = getAuth(app);
-      db = getFirestore(app);
-      await setPersistence(auth, browserLocalPersistence);
 
-      // 1) Auth listener FIRST
+      // Redirect-ready auth (persistence + popupRedirectResolver)
+      auth = initializeAuth(app, {
+        persistence: browserLocalPersistence,
+        popupRedirectResolver: browserPopupRedirectResolver
+      });
+
+      db = getFirestore(app);
+
+      // Listener FIRST
       onAuthStateChanged(auth, async (user)=>{
         listenerFired = true;
         currentUser = user ? { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous } : null;
@@ -289,38 +295,33 @@
         logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
       });
 
-      // 2) Process redirect result AFTER listener (surface any error visibly)
+      // Process redirect result AFTER listener
       const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
       try {
         const rr = await getRedirectResult(auth);
         lastRedirect = rr ? { ok:true, user: !!rr.user, providerId: rr?._tokenResponse?.providerId || null } : { ok:true, user:false };
+        if (rr?.user) setMsg(loginMsg, `Signed in as ${rr.user.displayName || rr.user.email || rr.user.uid}`);
       } catch (e) {
         lastRedirect = { ok:false, error: (e && (e.message || String(e))) };
         setMsg(loginMsg, `Auth error after redirect: ${e.message || e}`);
       }
       logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
 
-      // 3) Buttons (popup-first, redirect-fallback)
-      if (!loginGoogle.__bound){ 
-        loginGoogle.__bound = true; 
+      // Buttons — redirect-first (popup fallback only if redirect throws immediately)
+      if (!loginGoogle.__bound){
+        loginGoogle.__bound = true;
         loginGoogle.onclick = async ()=>{
-          setMsg(loginMsg, "Opening Google popup…");
           try {
-            const res = await signInWithPopup(auth, google);
-            lastPopup = { ok:true, user: !!res.user };
-            logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
+            setMsg(loginMsg, "Redirecting to Google…");
+            await signInWithRedirect(auth, google);
           } catch (e) {
-            lastPopup = { ok:false, code: e.code, msg: e.message };
+            // very rare immediate error → fallback to popup
+            setMsg(loginMsg, "Redirect failed — trying popup…");
+            try { const res = await signInWithPopup(auth, google); lastPopup = { ok:true, user:!!res.user }; }
+            catch (err){ lastPopup = { ok:false, code: err.code, msg: err.message }; setMsg(loginMsg, `Popup sign-in failed: ${err.message||err}`); }
             logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
-            // fallback to redirect for environments that block popups
-            if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user' || e.code === 'auth/operation-not-supported-in-this-environment') {
-              setMsg(loginMsg, "Popup blocked — redirecting to Google…");
-              await signInWithRedirect(auth, google);
-            } else {
-              setMsg(loginMsg, `Popup sign-in failed: ${e.message || e}`);
-            }
           }
-        }; 
+        };
       }
       if (!continueAnon.__bound){ continueAnon.__bound = true; continueAnon.onclick = async ()=>{ try { await signInAnonymously(auth); } catch(e){ setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message||e)); } }; }
       if (!signoutBtn.__bound){ signoutBtn.__bound = true; signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); }; }

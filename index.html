@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Half Marathon Planner — Redirect Build</title>
+<title>Half Marathon Planner</title>
 <style>
   :root{
     --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
@@ -49,27 +49,13 @@
   .anon-tip{position:absolute;top:120%;left:50%;transform:translateX(-50%);background:#2a0f0f;color:#ffdada;border:1px solid #ff9a9a;border-radius:8px;padding:8px 10px;width:260px;font-size:12px;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s}
   .anon-dot:hover .anon-tip{opacity:1;pointer-events:auto}
   .anon-dot:focus .anon-tip{opacity:1;pointer-events:auto}
+  .anon-actions{display:flex;gap:8px;flex-wrap:wrap}
 
-  /* Debug panel */
-  #debugPanel{position:fixed;right:10px;top:10px;z-index:9999;background:#0b1320;border:1px solid #2b3857;border-radius:12px;max-width:min(92vw,420px);color:#d3e1ff}
-  #debugHead{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #2b3857}
-  #debugBody{padding:8px 10px;max-height:50vh;overflow:auto}
-  #debugToggle{background:#192642;border:1px solid #2b3857;border-radius:8px;padding:4px 8px;color:#d3e1ff}
-  pre{white-space:pre-wrap;word-break:break-word;margin:0;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:12px}
+  /* Header actions */
+  .header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
-
-<!-- ---------- DEBUG PANEL ---------- -->
-<div id="debugPanel">
-  <div id="debugHead">
-    <strong>Diagnostics</strong>
-    <button id="debugToggle">Hide</button>
-  </div>
-  <div id="debugBody">
-    <pre id="debugText">Booting…</pre>
-  </div>
-</div>
 
 <!-- ---------- LOGIN GATE ---------- -->
 <section id="loginGate" class="gate">
@@ -95,12 +81,10 @@
     <span class="badge" id="userBadge">User</span>
     <span id="anonBadge" class="anon-dot hidden" tabindex="0" aria-label="Anonymous account">?</span>
   </div>
-  <div class="controls">
-    <select id="weekFilter"></select>
-    <button id="showAll" class="ghost">Show all</button>
-    <button id="markWeek" class="primary">Mark week done</button>
-    <button id="resetPlan" class="ghost">Reset & Replan</button>
-    <button id="signout" class="ghost hidden">Sign out</button>
+  <div class="header-actions">
+    <button id="upgradeBtn" class="primary hidden" title="Link your anonymous account to Google to keep your data">Save data with Google</button>
+    <button id="switchUser" class="ghost">Switch user</button>
+    <button id="signout" class="ghost">Sign out</button>
   </div>
 </header>
 
@@ -183,7 +167,7 @@
   </div>
 </div>
 
-<!-- ========== Firebase + App Code (Redirect build) ========== -->
+<!-- ========== Firebase + App Code (Popup-only) ========== -->
 <script type="module">
   /********** 1) PASTE YOUR FIREBASE CONFIG **********/
   const FIREBASE_CONFIG = {
@@ -199,9 +183,9 @@
   /********** Firebase (modular) **********/
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    initializeAuth, browserLocalPersistence, browserPopupRedirectResolver,
-    GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithPopup,
-    onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
+    getAuth, setPersistence, browserLocalPersistence,
+    GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut,
+    signInAnonymously, linkWithPopup
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -222,6 +206,8 @@
   const userBadge = document.getElementById('userBadge');
   const anonBadge = document.getElementById('anonBadge');
   const signoutBtn = document.getElementById('signout');
+  const switchUserBtn = document.getElementById('switchUser');
+  const upgradeBtn = document.getElementById('upgradeBtn');
 
   const weekFilter = document.getElementById('weekFilter');
   const showAll = document.getElementById('showAll');
@@ -232,21 +218,13 @@
   const importFile = document.getElementById('importFile');
   const installBtn = document.getElementById('installBtn');
 
-  /********** Debug panel **********/
-  const debugText = document.getElementById('debugText');
-  const debugToggle = document.getElementById('debugToggle');
-  const debugBody = document.getElementById('debugBody');
-  debugToggle.onclick = ()=>{ const hide = debugBody.style.display!=='none'; debugBody.style.display = hide?'none':''; debugToggle.textContent = hide?'Show':'Hide'; };
-  const bootInfo = { host: location.host, HAS_CONFIG, projectId: FIREBASE_CONFIG.projectId };
-  function logDebug(obj){ debugText.textContent = JSON.stringify(obj, null, 2); }
-  function setMsg(el, msg){ if(el) el.textContent = msg || ""; }
-
   /********** Helpers **********/
   const LS = { key:(uid,k)=>`hmx_${uid}_${k}`, get:(uid,k)=>{try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null}}, set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)) };
+  function setMsg(msg){ loginMsg.textContent = msg || ""; }
   function showAppUI(show){ [appHeader, progressWrap, list, footer].forEach(el=>el.classList.toggle('hidden', !show)); loginGate.classList.toggle('hidden', show); }
 
   /********** Global state **********/
-  let auth=null, db=null, currentUser=null, lastRedirect=null, lastPopup=null, listenerFired=false, uiSwitched=false;
+  let auth=null, db=null, currentUser=null, uiSwitched=false;
 
   /********** Boot **********/
   try {
@@ -255,105 +233,92 @@
       banner.textContent = "Firebase config missing — please add your config in the HTML.";
       loginGoogle.disabled = true;
       continueAnon.disabled = true;
-      logDebug({ ...bootInfo, status: "NO_CONFIG" });
     } else {
-      // Single app
       const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
-
-      // Redirect-ready auth (persistence + popupRedirectResolver)
-      auth = initializeAuth(app, {
-        persistence: browserLocalPersistence,
-        popupRedirectResolver: browserPopupRedirectResolver
-      });
-
+      auth = getAuth(app);
       db = getFirestore(app);
+      await setPersistence(auth, browserLocalPersistence);
+
+      const google = new GoogleAuthProvider();
+      google.setCustomParameters({ prompt:'select_account' });
 
       // Listener FIRST
       onAuthStateChanged(auth, async (user)=>{
-        listenerFired = true;
         currentUser = user ? { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous } : null;
 
-        logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
         if (user && !uiSwitched) {
           uiSwitched = true;
           userBadge.textContent = currentUser.displayName;
+
+          // Anonymous UI bits
           if (currentUser.isAnonymous) {
-            anonBadge.innerHTML = '?<span class="anon-tip">Temporary account: your data may be lost if you don’t sign in with Google later. You can upgrade anytime.</span>';
+            anonBadge.innerHTML = '?<span class="anon-tip">Temporary account: your data may be lost if you don’t sign in with Google later. Tap “Save data with Google”.</span>';
             anonBadge.classList.remove('hidden');
-            anonBadge.onclick = (e)=>{ const tip = anonBadge.querySelector('.anon-tip'); tip.style.opacity = tip.style.opacity==='1'?'0':'1'; tip.style.pointerEvents = tip.style.pointerEvents==='auto'?'none':'auto'; e.stopPropagation(); };
+            upgradeBtn.classList.remove('hidden');
+            upgradeBtn.onclick = async ()=>{
+              try { await linkWithPopup(auth.currentUser, google); location.reload(); }
+              catch(e){ alert("Link failed: " + (e.message||e)); }
+            };
+            // tap-to-toggle tip on mobile
+            anonBadge.onclick = (e)=>{ const tip = anonBadge.querySelector('.anon-tip'); const open = tip.style.opacity==='1'; tip.style.opacity=open?'0':'1'; tip.style.pointerEvents=open?'none':'auto'; e.stopPropagation(); };
             document.body.addEventListener('click', ()=>{ const tip = anonBadge.querySelector('.anon-tip'); if(tip){ tip.style.opacity='0'; tip.style.pointerEvents='none'; }});
           } else {
             anonBadge.classList.add('hidden');
+            upgradeBtn.classList.add('hidden');
           }
-          try { await enterApp(true); }
-          catch(e){ setMsg(loginMsg, "Render error: " + (e.message||e)); }
+
+          // Load data (cloud → local) then render
+          try {
+            const profSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"profile","default"));
+            const progSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"progress","current"));
+            if (profSnap.exists()) LS.set(auth.currentUser.uid,'profile', profSnap.data());
+            if (progSnap.exists()) LS.set(auth.currentUser.uid,'progress', progSnap.data());
+          } catch(e) {
+            console.warn("Firestore load error:", e);
+          }
+
+          const profile = LS.get(auth.currentUser.uid,'profile');
+          const progress = LS.get(auth.currentUser.uid,'progress') || {};
+          if (!profile) openOnboarding(); else await buildPlanAndRender(profile, progress);
+          showAppUI(true);
         }
+
         if (!user) {
+          uiSwitched = false;
           showAppUI(false);
-          setMsg(loginMsg, "Sign in with Google, or continue temporarily.");
+          setMsg("Sign in with Google, or continue temporarily.");
         }
-        logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
       });
 
-      // Process redirect result AFTER listener
-      const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
-      try {
-        const rr = await getRedirectResult(auth);
-        lastRedirect = rr ? { ok:true, user: !!rr.user, providerId: rr?._tokenResponse?.providerId || null } : { ok:true, user:false };
-        if (rr?.user) setMsg(loginMsg, `Signed in as ${rr.user.displayName || rr.user.email || rr.user.uid}`);
-      } catch (e) {
-        lastRedirect = { ok:false, error: (e && (e.message || String(e))) };
-        setMsg(loginMsg, `Auth error after redirect: ${e.message || e}`);
-      }
-      logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
+      // Buttons
+      loginGoogle.onclick = async ()=>{
+        try { setMsg("Opening Google…"); await signInWithPopup(auth, google); }
+        catch(e){ setMsg(`Popup sign-in failed: ${e.message||e}`); }
+      };
+      continueAnon.onclick = async ()=>{ try { await signInAnonymously(auth); } catch(e){ setMsg("Anonymous sign-in failed: " + (e.message||e)); } };
 
-      // Buttons — redirect-first (popup fallback only if redirect throws immediately)
-      if (!loginGoogle.__bound){
-        loginGoogle.__bound = true;
-        loginGoogle.onclick = async ()=>{
-          try {
-            setMsg(loginMsg, "Redirecting to Google…");
-            await signInWithRedirect(auth, google);
-          } catch (e) {
-            // very rare immediate error → fallback to popup
-            setMsg(loginMsg, "Redirect failed — trying popup…");
-            try { const res = await signInWithPopup(auth, google); lastPopup = { ok:true, user:!!res.user }; }
-            catch (err){ lastPopup = { ok:false, code: err.code, msg: err.message }; setMsg(loginMsg, `Popup sign-in failed: ${err.message||err}`); }
-            logDebug({ ...bootInfo, listenerFired, lastPopup, lastRedirect, user: currentUser, uiSwitched });
-          }
-        };
-      }
-      if (!continueAnon.__bound){ continueAnon.__bound = true; continueAnon.onclick = async ()=>{ try { await signInAnonymously(auth); } catch(e){ setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message||e)); } }; }
-      if (!signoutBtn.__bound){ signoutBtn.__bound = true; signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); }; }
+      signoutBtn.onclick = async ()=>{
+        try { await signOut(auth); } finally {
+          // Optional: keep caches (namespaced by uid). Safe to stay.
+          location.reload();
+        }
+      };
+
+      switchUserBtn.onclick = async ()=>{
+        try { await signOut(auth); } catch{} 
+        finally {
+          try { await signInWithPopup(auth, google); } 
+          catch(e){ alert(`Sign-in failed: ${e.message||e}`); }
+        }
+      };
     }
   } catch (e) {
-    setMsg(loginMsg, "Fatal init error: " + (e.message||e));
-    logDebug({ ...bootInfo, fatal: (e && (e.message || String(e))) });
+    setMsg("Fatal init error: " + (e.message||e));
   }
 
-  /********** App logic **********/
-  async function enterApp(isAuthed){
-    showAppUI(true);
-    let profile = LS.get(auth.currentUser.uid,'profile');
-    let progress = LS.get(auth.currentUser.uid,'progress') || {};
-
-    if (db && isAuthed) {
-      try{
-        const profSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"profile","default"));
-        if (profSnap.exists()) { profile = profSnap.data(); LS.set(auth.currentUser.uid,'profile',profile); }
-        const progSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"progress","current"));
-        if (progSnap.exists()) { progress = progSnap.data(); LS.set(auth.currentUser.uid,'progress',progress); }
-      }catch(e){
-        setMsg(loginMsg, `Firestore load error: ${e.message || e}`);
-      }
-    }
-
-    if (!profile) { openOnboarding(); }
-    else { await buildPlanAndRender(profile, progress); }
-  }
-
-  function parseTimeToMinutes(str){ if(!str) return null; const p=str.split(":").map(x=>parseInt(x,10)); if(p.length===3) return p[0]*60+p[1]+p[2]/60; if(p.length===2) return p[0]+p[1]/60; return parseFloat(p[0]); }
+  /********** Planner / Generator **********/
   const round1 = x => Math.round(x*10)/10;
+  function parseTimeToMinutes(str){ if(!str) return null; const p=str.split(":").map(x=>parseInt(x,10)); if(p.length===3) return p[0]*60+p[1]+p[2]/60; if(p.length===2) return p[0]+p[1]/60; return parseFloat(p[0]); }
   const formatDate = d => d.toISOString().slice(0,10);
   function typeFromText(t){ if(t.startsWith("E:"))return"e"; if(t.startsWith("S:"))return"s"; if(t.startsWith("L:"))return"l"; if(t.includes("Race"))return"race"; if(t.includes("Rest"))return"rest"; if(t.includes("Run/Walk"))return"runwalk"; if(t.includes("Walk"))return"walk"; return"e"; }
 
@@ -370,6 +335,7 @@
     let anchor = new Date(startDate);
     const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
 
+    // Foundation block
     for(let w=0; w<foundationWeeks; w++){
       const long = baseLongest + w*0.5 + 0.5;
       const sessions = [
@@ -386,6 +352,7 @@
       anchor.setDate(anchor.getDate()+7);
     }
 
+    // Main plan
     let totalWeeks = 16;
     if(profile.goalType!=="health" && profile.targetDate){
       const tdate = new Date(profile.targetDate);
@@ -507,11 +474,13 @@
       }; r.readAsText(f);
     };
 
+    // PWA-ish “Add to Home”
     let deferredPrompt=null;
     window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.disabled=false; });
     installBtn.onclick = async ()=>{ if(!deferredPrompt){ alert('Use Share → Add to Home Screen'); return; } deferredPrompt.prompt(); deferredPrompt=null; };
   }
 
+  /** ----- Onboarding ----- */
   function openOnboarding(isReset=false){
     const m = document.getElementById('onboardModal'); m.classList.remove('hidden');
     const qgoal = document.getElementById('q_goal'); const extra = document.getElementById('goalExtra');
@@ -536,6 +505,7 @@
     };
   }
 
+  /** ----- Cloud sync (Firestore) + local cache ----- */
   async function saveProfile(profile){
     const uid = auth.currentUser.uid;
     LS.set(uid,'profile',profile);
@@ -547,17 +517,6 @@
     if(db){ await setDoc(doc(db,"users",uid,"progress","current"), progress, { merge:true }); }
   }
 
-  // Optional: helper to upgrade anon → Google while preserving data
-  window.upgradeToGoogle = async function(){
-    try{
-      const provider = new GoogleAuthProvider();
-      await linkWithPopup(auth.currentUser, provider);
-      alert("Account linked to Google. Your data is now permanent.");
-      location.reload();
-    }catch(e){
-      alert("Link failed: " + (e.message||e));
-    }
-  };
 </script>
 
 </body>

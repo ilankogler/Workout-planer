@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Half Marathon Planner</title>
+<title>Half Marathon Planner — Diagnostic</title>
 <style>
   :root{
     --easy:#a8e6a3; --speed:#87ceeb; --long:#ffcc80; --race:#ff9999; --rest:#cccccc; --runwalk:#b3a2c7; --walk:#f4cccc;
@@ -33,7 +33,6 @@
   details{grid-column:1 / -1}
   textarea,input.note{width:100%;background:#0f1115;color:#e9edf1;border:1px solid #2d3748;border-radius:8px;padding:8px;font-size:14px}
   footer.fixed{position:fixed;bottom:0;left:0;right:0;background:rgba(15,17,21,.95);border-top:1px solid #2d3748;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}
-
   .next{background:#12202a;border:1px solid #244b57;border-radius:12px;padding:10px 12px;margin:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
   .next strong{color:#9be7ff}
   .hidden{display:none !important}
@@ -41,7 +40,6 @@
   /* Login gate */
   .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
   .panel{width:min(520px,94vw);background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:20px;display:grid;gap:12px}
-  .row{display:grid;gap:6px}
   .note{color:#a0aec0;font-size:12px}
   .stack{display:grid;gap:8px}
 
@@ -51,9 +49,27 @@
   .anon-tip{position:absolute;top:120%;left:50%;transform:translateX(-50%);background:#2a0f0f;color:#ffdada;border:1px solid #ff9a9a;border-radius:8px;padding:8px 10px;width:260px;font-size:12px;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s}
   .anon-dot:hover .anon-tip{opacity:1;pointer-events:auto}
   .anon-dot:focus .anon-tip{opacity:1;pointer-events:auto}
+
+  /* Debug panel */
+  #debugPanel{position:fixed;right:10px;top:10px;z-index:9999;background:#0b1320;border:1px solid #2b3857;border-radius:12px;max-width:min(92vw,420px);color:#d3e1ff}
+  #debugHead{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #2b3857}
+  #debugBody{padding:8px 10px;max-height:50vh;overflow:auto}
+  #debugToggle{background:#192642;border:1px solid #2b3857;border-radius:8px;padding:4px 8px;color:#d3e1ff}
+  pre{white-space:pre-wrap;word-break:break-word;margin:0;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:12px}
 </style>
 </head>
 <body>
+
+<!-- ---------- DEBUG PANEL ---------- -->
+<div id="debugPanel">
+  <div id="debugHead">
+    <strong>Diagnostics</strong>
+    <button id="debugToggle">Hide</button>
+  </div>
+  <div id="debugBody">
+    <pre id="debugText">Booting…</pre>
+  </div>
+</div>
 
 <!-- ---------- LOGIN GATE ---------- -->
 <section id="loginGate" class="gate">
@@ -63,9 +79,7 @@
 
     <div class="stack">
       <button id="loginGoogle" class="primary">Continue with Google</button>
-
       <div style="height:1px;background:#2d3748;margin:8px 0"></div>
-
       <button id="continueAnon" class="ghost">Continue without login (Temporary)</button>
       <div class="note">⚠️ <strong>Temporary account:</strong> your data may be lost if you don’t sign in with Google later.</div>
     </div>
@@ -169,9 +183,8 @@
   </div>
 </div>
 
-<!-- ========== Firebase (modular) + App code ========== -->
+<!-- ========== Firebase + App Code (Diagnostic build) ========== -->
 <script type="module">
-  /********** 1) CONFIGURE FIREBASE HERE **********/
   const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCsk8uKyjaRUVih6HGUsPpwSUX_VI4bZwk",
   authDomain: "workout-planer-cd10f.firebaseapp.com",
@@ -182,14 +195,16 @@
   };
   const HAS_CONFIG = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("YOUR_");
 
-  // Firebase imports (modular)
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { 
-    getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
+  /********** Firebase (modular) **********/
+  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, setPersistence, browserLocalPersistence,
+    GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+    onAuthStateChanged, signOut, signInAnonymously, linkWithPopup
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // UI elements
+  /********** UI refs **********/
   const loginGate = document.getElementById('loginGate');
   const loginGoogle = document.getElementById('loginGoogle');
   const continueAnon = document.getElementById('continueAnon');
@@ -216,95 +231,90 @@
   const importFile = document.getElementById('importFile');
   const installBtn = document.getElementById('installBtn');
 
-  // Local cache per user id
+  /********** Debug panel **********/
+  const debugText = document.getElementById('debugText');
+  const debugToggle = document.getElementById('debugToggle');
+  const debugBody = document.getElementById('debugBody');
+  debugToggle.onclick = ()=>{ const hide = debugBody.style.display!=='none'; debugBody.style.display = hide?'none':''; debugToggle.textContent = hide?'Show':'Hide'; };
+  function logDebug(obj){ debugText.textContent = JSON.stringify(obj, null, 2); }
+
+  /********** Helpers **********/
   const LS = { key:(uid,k)=>`hmx_${uid}_${k}`, get:(uid,k)=>{try{return JSON.parse(localStorage.getItem(LS.key(uid,k)))}catch{return null}}, set:(uid,k,v)=>localStorage.setItem(LS.key(uid,k), JSON.stringify(v)) };
+  function showAppUI(show){ [appHeader, progressWrap, list, footer].forEach(el=>el.classList.toggle('hidden', !show)); loginGate.classList.toggle('hidden', show); }
+  function setMsg(el, msg){ if(el) el.textContent = msg || ""; }
 
-  let currentUser = null; // { uid, displayName, isAnonymous }
-  let PLAN = { items:[], runDays:[] };
-  let db, auth;
+  /********** Global state **********/
+  let auth=null, db=null, currentUser=null, lastRedirect = null, listenerFired=false, uiSwitched=false;
 
-  function showAppUI(show){
-    [appHeader, progressWrap, list, footer].forEach(el => el.classList.toggle('hidden', !show));
-    loginGate.classList.toggle('hidden', show);
-  }
-  function setMsg(el, msg){ el.textContent = msg || ""; }
+  /********** Boot **********/
+  const bootInfo = { host: location.host, HAS_CONFIG, projectId: FIREBASE_CONFIG.projectId };
+  try {
+    if (!HAS_CONFIG) {
+      banner.classList.remove('hidden');
+      banner.textContent = "Firebase config missing — please add your config in the HTML.";
+      loginGoogle.disabled = true;
+      continueAnon.disabled = true;
+      logDebug({ ...bootInfo, status: "NO_CONFIG" });
+    } else {
+      const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
+      auth = getAuth(app);
+      db = getFirestore(app);
+      await setPersistence(auth, browserLocalPersistence); // ensure redirect session survives
 
-  // Initialize Firebase (or guest-only banner)
-  if (HAS_CONFIG) {
-    const app = initializeApp(FIREBASE_CONFIG);
-    auth = getAuth(app);
-    db = getFirestore(app);
+      // 1) Auth listener FIRST
+      onAuthStateChanged(auth, async (user)=>{
+        listenerFired = true;
+        currentUser = user ? { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous } : null;
 
-    // Google Provider (redirect is most reliable on iPhone)
-    const google = new GoogleAuthProvider();
-    google.setCustomParameters({ prompt:'select_account' });
-
-    // Handle redirect result & show any errors on-page
-    getRedirectResult(auth)
-      .then(res => {
-        if (res && res.user) setMsg(loginMsg, `Signed in as ${res.user.displayName || res.user.email || res.user.uid}`);
-      })
-      .catch(err => setMsg(loginMsg, `Auth error after redirect: ${err.message || err}`));
-
-    // Wire buttons
-    loginGoogle.onclick = ()=>{ setMsg(loginMsg, "Redirecting to Google…"); signInWithRedirect(auth, google); };
-    continueAnon.onclick = async ()=>{
-      try {
-        await signInAnonymously(auth);
-        // onAuthStateChanged will handle the rest
-      } catch(e){
-        setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message || e));
-      }
-    };
-
-    signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); };
-
-    // Auth state drives the UI
-    onAuthStateChanged(auth, async (user)=>{
-      if (user) {
-        currentUser = { uid:user.uid, displayName:user.displayName || user.email || "User", isAnonymous: !!user.isAnonymous };
-        userBadge.textContent = currentUser.displayName;
-        // Show red question mark & tooltip if anonymous
-        if (currentUser.isAnonymous) {
-          anonBadge.innerHTML = '?<span class="anon-tip">Temporary account: your data may be lost if you don’t sign in with Google later. You can upgrade anytime from this menu.</span>';
-          anonBadge.classList.remove('hidden');
-          // Tap-to-toggle for mobile
-          anonBadge.onclick = (e)=>{ 
-            const tip = anonBadge.querySelector('.anon-tip'); 
-            tip.style.opacity = tip.style.opacity === '1' ? '0' : '1'; 
-            tip.style.pointerEvents = tip.style.pointerEvents === 'auto' ? 'none':'auto';
-            e.stopPropagation();
-          };
-          document.body.addEventListener('click', ()=>{ 
-            const tip = anonBadge.querySelector('.anon-tip'); 
-            if(tip){ tip.style.opacity='0'; tip.style.pointerEvents='none'; }
-          });
-        } else {
-          anonBadge.classList.add('hidden');
+        logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+        if (user && !uiSwitched) {
+          uiSwitched = true;
+          userBadge.textContent = currentUser.displayName;
+          if (currentUser.isAnonymous) {
+            anonBadge.innerHTML = '?<span class="anon-tip">Temporary account: your data may be lost if you don’t sign in with Google later. You can upgrade anytime.</span>';
+            anonBadge.classList.remove('hidden');
+            anonBadge.onclick = (e)=>{ const tip = anonBadge.querySelector('.anon-tip'); tip.style.opacity = tip.style.opacity==='1'?'0':'1'; tip.style.pointerEvents = tip.style.pointerEvents==='auto'?'none':'auto'; e.stopPropagation(); };
+            document.body.addEventListener('click', ()=>{ const tip = anonBadge.querySelector('.anon-tip'); if(tip){ tip.style.opacity='0'; tip.style.pointerEvents='none'; }});
+          } else {
+            anonBadge.classList.add('hidden');
+          }
+          try { await enterApp(true); }
+          catch(e){ setMsg(loginMsg, "Render error: " + (e.message||e)); }
         }
-        await enterApp(true);
-      } else {
-        showAppUI(false);
-        setMsg(loginMsg, "Sign in with Google, or continue temporarily.");
-      }
-    });
+        if (!user) {
+          showAppUI(false);
+          setMsg(loginMsg, "Sign in with Google, or continue temporarily.");
+        }
+        logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+      });
 
-  } else {
-    banner.classList.remove('hidden');
-    banner.textContent = "Firebase not configured — please add your config in the HTML.";
-    // Hide Google/Anon actions if there is no config
-    loginGoogle.disabled = true;
-    continueAnon.disabled = true;
+      // 2) Then process the redirect result (surface any error visibly)
+      const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
+      try {
+        const rr = await getRedirectResult(auth);
+        lastRedirect = rr ? { ok:true, user: !!rr.user, providerId: rr?._tokenResponse?.providerId || null } : { ok:true, user:false };
+      } catch (e) {
+        lastRedirect = { ok:false, error: (e && (e.message || String(e))) };
+        setMsg(loginMsg, `Auth error after redirect: ${e.message || e}`);
+      }
+      logDebug({ ...bootInfo, listenerFired, lastRedirect, user: currentUser, uiSwitched });
+
+      // 3) Buttons
+      if (!loginGoogle.__bound){ loginGoogle.__bound = true; loginGoogle.onclick = ()=>{ setMsg(loginMsg, "Redirecting to Google…"); signInWithRedirect(auth, google); }; }
+      if (!continueAnon.__bound){ continueAnon.__bound = true; continueAnon.onclick = async ()=>{ try { await signInAnonymously(auth); } catch(e){ setMsg(loginMsg, "Anonymous sign-in failed: " + (e.message||e)); } }; }
+      if (!signoutBtn.__bound){ signoutBtn.__bound = true; signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); }; }
+    }
+  } catch (e) {
+    setMsg(loginMsg, "Fatal init error: " + (e.message||e));
+    logDebug({ ...bootInfo, fatal: (e && (e.message || String(e))) });
   }
 
-  /** Enter app (after auth) */
-  async function enterApp(isAuthed=false){
+  /********** App logic **********/
+  async function enterApp(isAuthed){
     showAppUI(true);
-    // Load profile/progress from cache first
     let profile = LS.get(auth.currentUser.uid,'profile');
     let progress = LS.get(auth.currentUser.uid,'progress') || {};
 
-    // If signed in (anon or google), try cloud load then cache
     if (db && isAuthed) {
       try{
         const profSnap = await getDoc(doc(db,"users",auth.currentUser.uid,"profile","default"));
@@ -320,27 +330,10 @@
     else { await buildPlanAndRender(profile, progress); }
   }
 
-  /** ----- Planner / Generator ----- */
-  function parseTimeToMinutes(str){
-    if(!str) return null;
-    const p = str.split(":").map(x=>parseInt(x,10));
-    if(p.length===3) return p[0]*60+p[1]+p[2]/60;
-    if(p.length===2) return p[0]+p[1]/60;
-    return parseFloat(p[0]);
-  }
+  function parseTimeToMinutes(str){ if(!str) return null; const p=str.split(":").map(x=>parseInt(x,10)); if(p.length===3) return p[0]*60+p[1]+p[2]/60; if(p.length===2) return p[0]+p[1]/60; return parseFloat(p[0]); }
   const round1 = x => Math.round(x*10)/10;
   const formatDate = d => d.toISOString().slice(0,10);
-
-  function typeFromText(t){
-    if (t.startsWith("E:")) return "e";
-    if (t.startsWith("S:")) return "s";
-    if (t.startsWith("L:")) return "l";
-    if (t.includes("Race")) return "race";
-    if (t.includes("Rest")) return "rest";
-    if (t.includes("Run/Walk")) return "runwalk";
-    if (t.includes("Walk")) return "walk";
-    return "e";
-  }
+  function typeFromText(t){ if(t.startsWith("E:"))return"e"; if(t.startsWith("S:"))return"s"; if(t.startsWith("L:"))return"l"; if(t.includes("Race"))return"race"; if(t.includes("Rest"))return"rest"; if(t.includes("Run/Walk"))return"runwalk"; if(t.includes("Walk"))return"walk"; return"e"; }
 
   async function callPlannerAI(profile){ return generatePlan(profile); } // stub
   function generatePlan(profile){
@@ -355,7 +348,6 @@
     let anchor = new Date(startDate);
     const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
 
-    // Foundation block (if needed)
     for(let w=0; w<foundationWeeks; w++){
       const long = baseLongest + w*0.5 + 0.5;
       const sessions = [
@@ -364,7 +356,7 @@
         `L: ${round1(long)} km`,
         `Walk 30–40 min`
       ];
-      const weekNum = w - (foundationWeeks-1); // negative-to-zero weeks
+      const weekNum = w - (foundationWeeks-1);
       runDays.slice(0,sessions.length).forEach((day,i)=>{
         const d = new Date(anchor); d.setDate(anchor.getDate()+dayOffsets[day]);
         items.push({ week: weekNum, day, date: formatDate(d), workout: sessions[i] });
@@ -372,7 +364,6 @@
       anchor.setDate(anchor.getDate()+7);
     }
 
-    // Main plan
     let totalWeeks = 16;
     if(profile.goalType!=="health" && profile.targetDate){
       const tdate = new Date(profile.targetDate);
@@ -404,25 +395,25 @@
 
   async function buildPlanAndRender(profile, progress){
     if(!profile){ openOnboarding(); return; }
-    PLAN = await callPlannerAI(profile);
-    renderList(progress || {});
+    const plan = await callPlannerAI(profile);
+    renderList(plan, progress || {});
   }
 
-  function renderList(progress){
+  function renderList(plan, progress){
+    const PLAN = plan;
     list.innerHTML = "";
     const state = progress || {};
     const weeks = [...new Set(PLAN.items.map(i=>i.week))].sort((a,b)=>a-b);
     weekFilter.innerHTML = weeks.map(w=>`<option value="${w}">Week ${w}</option>`).join("");
     if(state.filterWeek==null) state.filterWeek = weeks[0];
     weekFilter.value = state.filterWeek;
-    document.getElementById('totalCount')?.remove(); // ensure not referenced
-    // Next workout
+
     const today = new Date().toISOString().slice(0,10);
     const next = PLAN.items.find((it, idx)=>!state['w'+idx] && it.date >= today);
     if(next){
       nextBox.classList.remove('hidden');
       nextText.innerHTML = `Next workout: <strong>${next.workout}</strong> • ${next.day} • ${next.date}`;
-      markNext.onclick = ()=>{ const idx = PLAN.items.indexOf(next); state['w'+idx]=true; saveProgress(state); updateProgress(state); renderList(state); };
+      markNext.onclick = ()=>{ const idx = PLAN.items.indexOf(next); state['w'+idx]=true; saveProgress(state); updateProgress(state, PLAN); renderList(PLAN, state); };
     } else { nextBox.classList.add('hidden'); }
 
     PLAN.items.forEach((it, idx)=>{
@@ -431,7 +422,7 @@
       const id = "w"+idx;
 
       const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=!!state[id];
-      cb.addEventListener('change', ()=>{ state[id]=cb.checked; saveProgress(state); updateProgress(state); });
+      cb.addEventListener('change', ()=>{ state[id]=cb.checked; saveProgress(state); updateProgress(state, PLAN); });
 
       const content = document.createElement('div');
       const wline = document.createElement('div'); wline.className='workout'; wline.textContent=it.workout;
@@ -458,27 +449,28 @@
       list.appendChild(card);
     });
 
-    updateProgress(state);
-    hookControls(state);
+    updateProgress(state, PLAN);
+    hookControls(state, PLAN);
     [appHeader, progressWrap, list, footer].forEach(el=>el.classList.remove('hidden'));
   }
 
-  function updateProgress(state){
+  function updateProgress(state, PLAN){
     let done=0; PLAN.items.forEach((_, idx)=>{ if(state['w'+idx]) done++; });
     const total = PLAN.items.length; const pct = total? Math.round(done*100/total) : 0;
-    // Render a simple bar + text
+    document.getElementById('doneCount').textContent = done;
     document.getElementById('percent').textContent = pct + "%";
     document.getElementById('bar').style.width = pct + "%";
   }
 
-  function hookControls(state){
-    weekFilter.onchange = e=>{ state.filterWeek=parseInt(e.target.value); saveProgress(state); renderList(state); };
-    showAll.onclick = ()=>{ state.filterWeek=null; saveProgress(state); renderList(state); };
-    markWeek.onclick = ()=>{ if(state.filterWeek==null) return; PLAN.items.forEach((it, idx)=>{ if (it.week===state.filterWeek) state['w'+idx]=true; }); saveProgress(state); renderList(state); };
+  function hookControls(state, PLAN){
+    weekFilter.onchange = e=>{ state.filterWeek=parseInt(e.target.value); saveProgress(state); renderList(PLAN, state); };
+    showAll.onclick = ()=>{ state.filterWeek=null; saveProgress(state); renderList(PLAN, state); };
+    markWeek.onclick = ()=>{ if(state.filterWeek==null) return; PLAN.items.forEach((it, idx)=>{ if (it.week===state.filterWeek) state['w'+idx]=true; }); saveProgress(state); renderList(PLAN, state); };
     resetPlan.onclick = ()=> openOnboarding(true);
 
     exportBtn.onclick = ()=>{
-      const blob = new Blob([JSON.stringify({profile:LS.get(auth.currentUser.uid,'profile'), progress:LS.get(auth.currentUser.uid,'progress')}, null, 2)], {type:"application/json"});
+      const uid = auth?.currentUser?.uid || "local";
+      const blob = new Blob([JSON.stringify({profile:LS.get(uid,'profile'), progress:LS.get(uid,'progress')}, null, 2)], {type:"application/json"});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='hm_backup.json'; a.click();
     };
     importBtn.onclick = ()=>{
@@ -486,20 +478,19 @@
       const r = new FileReader(); r.onload = async ()=>{
         try{
           const o = JSON.parse(r.result);
+          const uid = auth?.currentUser?.uid || "local";
           if(o.profile){ await saveProfile(o.profile); }
           if(o.progress){ await saveProgress(o.progress); }
-          await buildPlanAndRender(o.profile||LS.get(auth.currentUser.uid,'profile'), o.progress||LS.get(auth.currentUser.uid,'progress'));
+          await buildPlanAndRender(o.profile||LS.get(uid,'profile'), o.progress||LS.get(uid,'progress'));
         }catch{ alert('Invalid file'); }
       }; r.readAsText(f);
     };
 
-    // PWA-ish
     let deferredPrompt=null;
     window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.disabled=false; });
     installBtn.onclick = async ()=>{ if(!deferredPrompt){ alert('Use Share → Add to Home Screen'); return; } deferredPrompt.prompt(); deferredPrompt=null; };
   }
 
-  /** ----- Onboarding ----- */
   function openOnboarding(isReset=false){
     const m = document.getElementById('onboardModal'); m.classList.remove('hidden');
     const qgoal = document.getElementById('q_goal'); const extra = document.getElementById('goalExtra');
@@ -524,14 +515,15 @@
     };
   }
 
-  /** ----- Cloud sync (Firestore) + local cache ----- */
   async function saveProfile(profile){
-    LS.set(auth.currentUser.uid,'profile',profile);
-    if(db){ await setDoc(doc(db,"users",auth.currentUser.uid,"profile","default"), profile, { merge:true }); }
+    const uid = auth.currentUser.uid;
+    LS.set(uid,'profile',profile);
+    if(db){ await setDoc(doc(db,"users",uid,"profile","default"), profile, { merge:true }); }
   }
   async function saveProgress(progress){
-    LS.set(auth.currentUser.uid,'progress',progress);
-    if(db){ await setDoc(doc(db,"users",auth.currentUser.uid,"progress","current"), progress, { merge:true }); }
+    const uid = auth.currentUser.uid;
+    LS.set(uid,'progress',progress);
+    if(db){ await setDoc(doc(db,"users",uid,"progress","current"), progress, { merge:true }); }
   }
 
   // Optional: helper to upgrade anon → Google while preserving data
@@ -546,7 +538,6 @@
     }
   };
 </script>
-
 
 </body>
 </html>

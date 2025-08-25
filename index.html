@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Half Marathon Planner</title>
 <style>
   :root{
@@ -30,41 +30,63 @@
   .type-race{background:var(--race)} .type-rest{background:var(--rest)} .type-runwalk{background:var(--runwalk);color:#191919} .type-walk{background:var(--walk);color:#191919}
   input[type=checkbox]{width:22px;height:22px;accent-color:#52c7ea}
   details{grid-column:1 / -1}
-  textarea,input.note{width:100%;background:#0f1115;color:var(--text);border:1px solid #2d3748;border-radius:8px;padding:8px;font-size:14px}
+  textarea,input.note{width:100%;background:#0f1115;color:#e9edf1;border:1px solid #2d3748;border-radius:8px;padding:8px;font-size:14px}
   footer.fixed{position:fixed;bottom:0;left:0;right:0;background:rgba(15,17,21,.95);border-top:1px solid #2d3748;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}
   .next{background:#12202a;border:1px solid #244b57;border-radius:12px;padding:10px 12px;margin:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
   .next strong{color:#9be7ff}
   .hidden{display:none !important}
-  /* Login screen */
+
+  /* Login gate */
   .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .panel{width:min(480px,94vw);background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:20px;display:grid;gap:12px}
+  .panel{width:min(520px,94vw);background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:20px;display:grid;gap:12px}
   .row{display:grid;gap:6px}
-  .provider-btn{display:flex;align-items:center;gap:10px;justify-content:center}
-  .apple{background:#fff;color:#111} .apple span{color:#111} .google{background:#fff;color:#111}
   .note{color:#a0aec0;font-size:12px}
-  /* Onboarding modal */
-  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,8,12,.65);z-index:100}
-  .sheet{width:min(680px,94vw);max-height:90vh;overflow:auto;background:#0f1115;border:1px solid #2d3748;border-radius:16px;padding:16px}
-  .grid{display:grid;gap:10px} .two{grid-template-columns:1fr 1fr}
-  label{font-size:13px;color:#cbd5e0}
+  .stack{display:grid;gap:8px}
+  .inline{display:flex;gap:8px;align-items:center}
 </style>
 </head>
 <body>
 
-<!-- ---------- LOGIN GATE (first screen) ---------- -->
+<!-- ---------- LOGIN GATE ---------- -->
 <section id="loginGate" class="gate">
   <div class="panel">
     <h2 style="margin:0 0 6px 0;">Welcome 👋</h2>
-    <p class="note" style="margin-top:0">Sign in to create and sync your plan. Your data will be saved to your account.</p>
-    <button id="loginGoogle" class="provider-btn google">Continue with Google</button>
-    <button id="loginApple" class="provider-btn apple"> Sign in with Apple</button>
+    <p class="note" style="margin-top:0">Sign in to create and sync your plan. Your data is saved to your account.</p>
+
+    <div class="stack">
+      <button id="loginGoogle" class="primary">Continue with Google</button>
+
+      <div style="height:1px;background:#2d3748;margin:8px 0"></div>
+
+      <div class="row">
+        <label for="phoneInput">Phone number (E.164, e.g. +972501234567)</label>
+        <input id="phoneInput" type="tel" placeholder="+972..." inputmode="tel"/>
+        <div id="recaptcha-container"></div>
+        <div class="inline">
+          <button id="sendCode" class="ghost">Send code</button>
+          <span id="sendMsg" class="note"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="codeInput">Verification code (SMS)</label>
+        <input id="codeInput" type="text" placeholder="123456" inputmode="numeric" />
+        <div class="inline">
+          <button id="verifyCode" class="primary">Verify & Sign in</button>
+          <span id="verifyMsg" class="note"></span>
+        </div>
+      </div>
+    </div>
+
     <div id="loginMsg" class="note"></div>
-    <hr style="border-color:#2d3748" />
+
+    <div style="height:1px;background:#2d3748;margin:8px 0"></div>
+
     <button id="continueGuest" class="ghost">Continue as Guest (local only)</button>
   </div>
 </section>
 
-<!-- ---------- APP (hidden until signed in OR guest continues) ---------- -->
+<!-- ---------- APP (hidden until signed in / guest) ---------- -->
 <header id="appHeader" class="hidden">
   <div style="display:flex;align-items:center;gap:10px;">
     <h1>Half Marathon Planner</h1>
@@ -98,7 +120,7 @@
 
 <footer class="fixed hidden" id="footer">
   <button id="export" class="primary">Export progress</button>
-  <input id="importFile" type="file" accept="application/json" />
+  <input id="importFile" type="file" accept="application/json"/>
   <button id="importBtn">Import</button>
   <button id="installBtn">Add to Home</button>
 </footer>
@@ -160,6 +182,7 @@
 
 <!-- ========== Firebase (modular) + App code ========== -->
 <script type="module">
+  /********** 1) CONFIGURE FIREBASE HERE **********/
   const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCsk8uKyjaRUVih6HGUsPpwSUX_VI4bZwk",
   authDomain: "workout-planer-cd10f.firebaseapp.com",
@@ -173,19 +196,25 @@
   // Firebase imports (modular)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { 
-    getAuth, GoogleAuthProvider, OAuthProvider,
-    onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut
+    getAuth, GoogleAuthProvider, RecaptchaVerifier,
+    onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut, signInWithPhoneNumber
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, updateDoc
+    getFirestore, doc, getDoc, setDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // UI
+  // UI elements
   const loginGate = document.getElementById('loginGate');
   const loginGoogle = document.getElementById('loginGoogle');
-  const loginApple  = document.getElementById('loginApple');
-  const loginMsg    = document.getElementById('loginMsg');
   const continueGuest = document.getElementById('continueGuest');
+  const loginMsg = document.getElementById('loginMsg');
+
+  const phoneInput = document.getElementById('phoneInput');
+  const sendCodeBtn = document.getElementById('sendCode');
+  const codeInput = document.getElementById('codeInput');
+  const verifyCodeBtn = document.getElementById('verifyCode');
+  const sendMsg = document.getElementById('sendMsg');
+  const verifyMsg = document.getElementById('verifyMsg');
 
   const appHeader = document.getElementById('appHeader');
   const banner = document.getElementById('banner');
@@ -216,7 +245,7 @@
 
   let currentUser = null; // { uid, displayName }
   let PLAN = { items:[], runDays:[] };
-  let db, auth;
+  let db, auth, confirmationResult = null;
 
   function showAppUI(show){
     [appHeader, progressWrap, list, footer].forEach(el => el.classList.toggle('hidden', !show));
@@ -229,23 +258,58 @@
     auth = getAuth(app);
     db = getFirestore(app);
 
-    const google = new GoogleAuthProvider(); google.setCustomParameters({ prompt:'select_account' });
-    const apple  = new OAuthProvider('apple.com'); // requires Apple setup in Firebase Console
+    // Google Provider
+    const google = new GoogleAuthProvider();
+    google.setCustomParameters({ prompt:'select_account' });
 
-    // Redirect result (after returning from provider)
+    // reCAPTCHA for phone
+    let recaptchaVerifier;
+    function ensureRecaptcha(){
+      if (!recaptchaVerifier) {
+        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          'size': 'invisible', // use 'normal' to show the widget if you prefer
+        });
+      }
+      return recaptchaVerifier;
+    }
+
+    // Redirect result (after returning from Google)
     getRedirectResult(auth).catch(()=>{});
 
-    loginGoogle.onclick = ()=>signInWithRedirect(auth, google);
-    loginApple.onclick  = async ()=>{
-      try { await signInWithRedirect(auth, apple); }
-      catch (e) { loginMsg.textContent = "Apple sign-in not configured in Firebase. Enable it or use Google."; }
-    };
+    // Click handlers
+    loginGoogle.onclick = ()=> signInWithRedirect(auth, google);
     continueGuest.onclick = ()=> { currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
 
+    sendCodeBtn.onclick = async () => {
+      sendMsg.textContent = ""; verifyMsg.textContent = "";
+      const phoneNumber = (phoneInput.value || "").trim();
+      if(!phoneNumber.startsWith('+')) { sendMsg.textContent = "Use international format, e.g. +972..."; return; }
+      try{
+        const appVerifier = ensureRecaptcha();
+        confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        sendMsg.textContent = "Code sent. Check your SMS.";
+      }catch(e){
+        sendMsg.textContent = "Failed to send code: " + (e.message||e);
+      }
+    };
+
+    verifyCodeBtn.onclick = async () => {
+      verifyMsg.textContent = "";
+      const code = (codeInput.value||"").trim();
+      if(!confirmationResult) { verifyMsg.textContent = "Send the code first."; return; }
+      try{
+        const cred = await confirmationResult.confirm(code);
+        // user signed in
+      }catch(e){
+        verifyMsg.textContent = "Invalid code. Try again.";
+      }
+    };
+
+    // Auth listener
     onAuthStateChanged(auth, async (user)=>{
       if (user) {
-        currentUser = { uid:user.uid, displayName:user.displayName || user.email || "User" };
-        enterApp(true);
+        currentUser = { uid:user.uid, displayName:user.displayName || user.phoneNumber || user.email || "User" };
+        await enterApp(true);
       } else {
         // show login gate
         showAppUI(false);
@@ -253,11 +317,14 @@
     });
 
     signoutBtn.onclick = async ()=>{ await signOut(auth); location.reload(); };
+
   } else {
     // No Firebase config → only Guest
     banner.classList.remove('hidden');
     banner.textContent = "Firebase not configured — using Guest mode (local only).";
-    loginGoogle.disabled = true; loginApple.disabled = true;
+    loginGoogle.disabled = true;
+    sendCodeBtn.disabled = true;
+    verifyCodeBtn.disabled = true;
     continueGuest.onclick = ()=>{ currentUser = { uid:"local", displayName:"Guest" }; enterApp(); };
   }
 
@@ -266,11 +333,11 @@
     userBadge.textContent = currentUser.displayName || "Guest";
     showAppUI(true);
 
-    // If online+authed, try to load profile/progress from Firestore first
+    // Load profile/progress (cloud → local)
     let profile = LS.get(currentUser.uid,'profile');
     let progress = LS.get(currentUser.uid,'progress') || {};
 
-    if (db && isAuthed) {
+    if (db && isAuthed && currentUser.uid!=="local") {
       const profSnap = await getDoc(doc(db,"users",currentUser.uid,"profile","default"));
       if (profSnap.exists()) { profile = profSnap.data(); LS.set(currentUser.uid,'profile',profile); }
       const progSnap = await getDoc(doc(db,"users",currentUser.uid,"progress","current"));
@@ -278,7 +345,7 @@
     }
 
     if (!profile) {
-      openOnboarding(); // forces onboarding for new users
+      openOnboarding(); // new user
     } else {
       await buildPlanAndRender(profile, progress);
     }
@@ -306,8 +373,7 @@
     return "e";
   }
 
-  async function callPlannerAI(profile){ return generatePlan(profile); } // stub (replace with API later)
-
+  async function callPlannerAI(profile){ return generatePlan(profile); } // stub
   function generatePlan(profile){
     const startDate = new Date(profile.startDate);
     const runDays = (profile.daysPerWeek||4)==4?["Mon","Wed","Sat","Sun"]:["Tue","Thu","Sat"];
@@ -320,7 +386,6 @@
     let anchor = new Date(startDate);
     const dayOffsets = { "Mon":0,"Tue":1,"Wed":2,"Thu":3,"Fri":4,"Sat":5,"Sun":6 };
 
-    // Foundation
     for(let w=0; w<foundationWeeks; w++){
       const long = baseLongest + w*0.5 + 0.5;
       const sessions = [
@@ -337,7 +402,6 @@
       anchor.setDate(anchor.getDate()+7);
     }
 
-    // Main plan
     let totalWeeks = 16;
     if(profile.goalType!=="health" && profile.targetDate){
       const tdate = new Date(profile.targetDate);
@@ -367,10 +431,10 @@
     return { items, runDays };
   }
 
-  // Build & render
   async function buildPlanAndRender(profile, progress){
     if(!profile){ openOnboarding(); return; }
-    PLAN = await callPlannerAI(profile);
+    const plan = await callPlannerAI(profile);
+    PLAN = plan;
     renderList(progress || {});
   }
 
@@ -383,7 +447,6 @@
     weekFilter.value = state.filterWeek;
     document.getElementById('totalCount').textContent = PLAN.items.length;
 
-    // Next workout
     const today = new Date().toISOString().slice(0,10);
     const next = PLAN.items.find((it, idx)=>!state['w'+idx] && it.date >= today);
     if(next){
@@ -486,7 +549,7 @@
       };
       if(p.goalType!=="health"){ p.goalKm = p.targetKm || 21.1; } else { p.goalKm = null; }
       await saveProfile(p);
-      m.classList.add('hidden');
+      document.getElementById('onboardModal').classList.add('hidden');
       await buildPlanAndRender(p, LS.get(currentUser.uid,'progress')||{});
     };
   }
@@ -506,7 +569,5 @@
   }
 
 </script>
-
-
 </body>
 </html>

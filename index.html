@@ -148,110 +148,21 @@
     </div>
   </div>
 </div>
-<script type="module">
-  // Firebase JS SDK (modular)
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { 
-    getAuth, GoogleAuthProvider, onAuthStateChanged, 
-    signInWithRedirect, getRedirectResult, signOut 
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  // OPTIONAL: Firestore (if you want cloud sync now; see Section 6)
-  // import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  const FIREBASE_ENABLED = true;
-  const firebaseConfig = {
+<script>
+/* =====================
+   Minimal "multi-user" state via Firebase (optional) + localStorage fallback
+   ===================== */
+const FIREBASE_ENABLED = true; // set to true after adding your Firebase config below
+// Paste your Firebase config here if you enable it:
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCsk8uKyjaRUVih6HGUsPpwSUX_VI4bZwk",
   authDomain: "workout-planer-cd10f.firebaseapp.com",
   projectId: "workout-planer-cd10f",
   storageBucket: "workout-planer-cd10f.firebasestorage.app",
   messagingSenderId: "450896422196",
   appId: "1:450896422196:web:0b3f45b17b62881ee9f161"
-};
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' }); // choose account
-
-  // UI elements
-  const signinBtn  = document.getElementById('signin');
-  const signoutBtn = document.getElementById('signout');
-  const userBadge  = document.getElementById('userBadge');
-
-  // Local per-user storage helpers
-  const LS_PREFIX = "hmx_";
-  const lsKey = (uid, k) => `${LS_PREFIX}${uid}_${k}`;
-
-  // Redirect result (after returning from Google)
-  getRedirectResult(auth).catch(console.error);
-
-  // Auth state listener
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      userBadge.textContent = user.displayName || "User";
-      signinBtn.classList.add('hidden');
-      signoutBtn.classList.remove('hidden');
-
-      // Set “currentUser” globally if your app expects it:
-      window.CURRENT_UID = user.uid;
-
-      // If this user has no profile locally, force onboarding
-      const profile = localStorage.getItem(lsKey(user.uid, "profile"));
-      if (!profile) {
-        // Clear any old guest state and open wizard
-        localStorage.setItem(lsKey(user.uid, "state"), JSON.stringify({}));
-        // Your existing openOnboarding() from Stage 1:
-        window.openOnboarding?.(true);
-      } else {
-        // Build plan for this user
-        window.buildPlanAndRender?.();
-      }
-    } else {
-      // Guest mode
-      userBadge.textContent = "Guest";
-      signinBtn.classList.remove('hidden');
-      signoutBtn.classList.add('hidden');
-      window.CURRENT_UID = "local";
-
-      // If no guest profile → onboarding
-      const gp = localStorage.getItem(lsKey("local", "profile"));
-      if (!gp) window.openOnboarding?.(); else window.buildPlanAndRender?.();
-    }
-  });
-
-  // Buttons
-  signinBtn?.addEventListener('click', () => {
-    signInWithRedirect(auth, provider);
-  });
-
-  signoutBtn?.addEventListener('click', async () => {
-    // Optional: keep each user’s data in localStorage (we’re not deleting here).
-    await signOut(auth);
-    // Return to guest mode
-    location.reload();
-  });
-
-  // Expose helpers for your existing functions to use the UID-aware keys
-  window.getUID = () => (window.CURRENT_UID || "local");
-  window.lsGet = (k) => localStorage.getItem(lsKey(window.getUID(), k));
-  window.lsSet = (k, v) => localStorage.setItem(lsKey(window.getUID(), k), v);
-</script>
-
-<script>
-/* =====================
-   Minimal "multi-user" state via Firebase (optional) + localStorage fallback
-   ===================== */
-const FIREBASE_ENABLED = false; // set to true after adding your Firebase config below
-// Paste your Firebase config here if you enable it:
-const FIREBASE_CONFIG = {
-  // apiKey: "...",
-  // authDomain: "...",
-  // projectId: "...",
-  // storageBucket: "...",
-  // messagingSenderId: "...",
-  // appId: "..."
-};
+	};
 
 let currentUser = { uid: "local", displayName: "Guest" }; // fallback
 const LS_PREFIX = "hmx_";
@@ -385,15 +296,13 @@ function round1(x){ return Math.round(x*10)/10; }
    Rendering and state
    ===================== */
 function getProfile(){
-  try { return JSON.parse(window.lsGet("profile")); } catch(e){ return null; }
+  try { return JSON.parse(localStorage.getItem(lsKey("profile"))); } catch(e){ return null; }
 }
 function setProfile(p){
-  window.lsSet("profile", JSON.stringify(p));
+  localStorage.setItem(lsKey("profile"), JSON.stringify(p));
 }
-function getState(){ 
-  try { return JSON.parse(window.lsGet("state")) || {}; } catch(e){ return {}; } 
-}
-function setState(s){ window.lsSet("state", JSON.stringify(s)); }
+function getState(){ try { return JSON.parse(localStorage.getItem(lsKey("state"))) || {}; } catch(e){ return {}; } }
+function setState(s){ localStorage.setItem(lsKey("state"), JSON.stringify(s)); }
 
 function typeFromText(t) {
   if (t.startsWith("E:")) return "e";
@@ -557,33 +466,56 @@ function openOnboarding(isReset=false){
    Firebase Auth scaffolding (Stage 2)
    ===================== */
 async function initFirebaseIfEnabled(){
-  if(!FIREBASE_ENABLED) { document.getElementById('signin').classList.add('hidden'); return; }
-  // Load Firebase scripts
+  if(!FIREBASE_ENABLED) { 
+    document.getElementById('signin').classList.add('hidden'); 
+    // Guest mode boot:
+    if(!getProfile()) openOnboarding(); else buildPlanAndRender();
+    return; 
+  }
+
+  // Load Firebase compat SDKs
   const s1 = document.createElement('script'); s1.src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
   const s2 = document.createElement('script'); s2.src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
   document.head.appendChild(s1); document.head.appendChild(s2);
   await new Promise(res=>s2.onload=res);
-  // Initialize
+
+  // Init
   firebase.initializeApp(FIREBASE_CONFIG);
   const auth = firebase.auth();
   const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  // Handle redirect result (mobile-friendly)
+  auth.getRedirectResult().catch(()=>{ /* ignore */ });
 
   auth.onAuthStateChanged((user)=>{
-    if(user){ currentUser = { uid:user.uid, displayName:user.displayName||"User" }; document.getElementById('userBadge').textContent = currentUser.displayName; 
-      document.getElementById('signin').classList.add('hidden'); document.getElementById('signout').classList.remove('hidden');
-      // New user → force onboarding
+    if(user){
+      currentUser = { uid:user.uid, displayName:user.displayName||"User" };
+      document.getElementById('userBadge').textContent = currentUser.displayName; 
+      document.getElementById('signin').classList.add('hidden'); 
+      document.getElementById('signout').classList.remove('hidden');
+
+      // If this account has no profile locally, open onboarding
       if(!getProfile()) openOnboarding();
       else buildPlanAndRender();
     }else{
       currentUser = { uid:"local", displayName:"Guest" };
       document.getElementById('userBadge').textContent = "Guest";
-      document.getElementById('signin').classList.remove('hidden'); document.getElementById('signout').classList.add('hidden');
+      document.getElementById('signin').classList.remove('hidden'); 
+      document.getElementById('signout').classList.add('hidden');
+
       if(!getProfile()) openOnboarding(); else buildPlanAndRender();
     }
   });
 
-  document.getElementById('signin').onclick = ()=>auth.signInWithPopup(provider);
-  document.getElementById('signout').onclick = ()=>{ auth.signOut(); localStorage.clear(); location.reload(); };
+  // Use redirect (more reliable on iPhone than popup)
+  document.getElementById('signin').onclick = ()=>auth.signInWithRedirect(provider);
+
+  // Do NOT clear all localStorage on signout (keeps other users' cached data):
+  document.getElementById('signout').onclick = async ()=>{
+    await auth.signOut();
+    location.reload(); // simple reset to guest
+  };
 }
 
 /* =====================
